@@ -1,60 +1,52 @@
 import pytest
 from src.schemas.text_extraction import TextExtractionResult
 from src.services.text_extraction.service import TextExtractionService
-from tests.fixtures.text_extraction import DUMMY_PDF_BYTES, EXPECTED_TEXT, CONTENT_TYPE
-
-# from src.services.text_extraction.ocr.azure import AzureOCRService  # TODO: Uncomment when implemented
+from tests.fixtures.text_extraction import (
+    AZURE_TEST_PDF_BYTES,
+    AZURE_TEST_TEXT,
+    CONTENT_TYPE,
+)
+from src.config.settings import settings
+from src.services.text_extraction.ocr.azure import AzureOCRService
 
 
 @pytest.mark.integration
-@pytest.mark.skip(reason="Azure OCR service not yet implemented")
 async def test_extract_text_from_pdf_with_azure_ocr():
     """
     Integration test for extracting text from a PDF using Azure Document Intelligence OCR.
 
     This validates:
     - The Azure OCR service can extract text from real PDF bytes
-    - The extracted text matches the expected content
-    - Metadata is properly calculated from the actual extraction
-
-    TODO: Before running this test, you need to:
-    1. Implement AzureOCRService in src/services/text_extraction/ocr/azure.py
-    2. Set up environment variables or config for Azure credentials
-    3. Remove the @pytest.mark.skip decorator
-    4. Uncomment the import at the top
+    - The extracted text matches the expected content (25 words)
+    - Character length matches the expected text length
+    - Token length is properly calculated
+    - Duration is measured and positive
     """
-    # TODO: Get Azure credentials from environment variables
-    # azure_endpoint = os.getenv("AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT")
-    # azure_key = os.getenv("AZURE_DOCUMENT_INTELLIGENCE_KEY")
+    # Arrange: Initialize Azure OCR service
+    azure_ocr = AzureOCRService()
 
-    # TODO: Initialize Azure OCR service
-    # azure_ocr = AzureOCRService(
-    #     endpoint=azure_endpoint,
-    #     api_key=azure_key
-    # )
-
-    # TODO: Create text extraction service with Azure OCR
-    # text_service = TextExtractionService(ocr_service=azure_ocr)
+    # Create text extraction service with Azure OCR
+    text_service = TextExtractionService(ocr_service=azure_ocr)
 
     # Act: Extract text from PDF bytes using real OCR
-    # result = await text_service.extract_text(DUMMY_PDF_BYTES, CONTENT_TYPE)
+    result = await text_service.extract_text(AZURE_TEST_PDF_BYTES, CONTENT_TYPE)
 
-    # Assert: Verify the extracted text
-    # NOTE: Real OCR might have slight variations (spacing, casing, etc.)
-    # Consider using fuzzy matching or normalizing both strings
-    # assert result.text.strip().lower() == EXPECTED_TEXT.strip().lower()
-    # assert result.character_length > 0
-    # assert result.token_length > 0
-    # assert result.duration > 0
-    # assert isinstance(result, TextExtractionResult)
+    # Assert: Verify result structure and content
+    assert isinstance(result, TextExtractionResult)
 
-    pass
+    # The text should match expected text after cleaning
+    assert result.text is not None
 
+    # Validate text content matches exactly
+    assert result.text == AZURE_TEST_TEXT
 
-# TODO: Add more integration tests for edge cases:
-# - Large PDF documents
-# - PDFs with images and complex layouts
-# - Scanned documents (actual OCR needed)
-# - Multi-page PDFs
-# - PDFs with tables
-# - Error handling (invalid PDFs, API failures, etc.)
+    # Validate character length matches
+    assert result.character_length == len(AZURE_TEST_TEXT)
+    assert result.character_length == 192  # Exact character count
+
+    # Validate token length is calculated (should be ~26 tokens for 25 words)
+    assert result.token_length > 0
+    assert result.token_length >= 25  # At least 25 tokens for 25 words
+
+    # Validate duration is measured
+    assert result.duration > 0

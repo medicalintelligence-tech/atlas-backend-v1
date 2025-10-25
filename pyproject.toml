@@ -5,6 +5,9 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "aiohttp>=3.9.0",
+    "azure-ai-documentintelligence>=1.0.0b4",
+    "ftfy>=6.2.0",
     "pydantic>=2.12.3",
     "pydantic-settings>=2.11.0",
     "tiktoken>=0.12.0",
@@ -22,3 +25,8 @@ asyncio_mode = "auto"
 markers = [
     "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
 ]
+# Show log output during test execution
+log_cli = true
+log_cli_level = "INFO"
+log_cli_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+log_cli_date_format = "%H:%M:%S"
