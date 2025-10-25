@@ -33,7 +33,7 @@ class TextExtractionService:
         """
         self.ocr_service = ocr_service
 
-    def extract_text(
+    async def extract_text(
         self, document_bytes: bytes, content_type: str
     ) -> TextExtractionResult:
         """
@@ -52,7 +52,7 @@ class TextExtractionService:
         start_time = time.time()
 
         # Route to appropriate extraction method
-        text = self._route_extraction(document_bytes, content_type)
+        text = await self._route_extraction(document_bytes, content_type)
 
         # Calculate metadata
         duration = time.time() - start_time  # Duration in seconds
@@ -66,7 +66,7 @@ class TextExtractionService:
             duration=duration,
         )
 
-    def _route_extraction(self, document_bytes: bytes, content_type: str) -> str:
+    async def _route_extraction(self, document_bytes: bytes, content_type: str) -> str:
         """
         Route to the appropriate extraction method based on content type.
 
@@ -81,7 +81,7 @@ class TextExtractionService:
             UnsupportedContentTypeError: If the content type is not supported
         """
         if content_type == "application/pdf":
-            return self._extract_from_pdf(document_bytes)
+            return await self._extract_from_pdf(document_bytes)
         elif content_type == "text/plain":
             return self._extract_from_txt(document_bytes)
         else:
@@ -89,7 +89,7 @@ class TextExtractionService:
                 f"Content type '{content_type}' is not supported"
             )
 
-    def _extract_from_pdf(self, pdf_bytes: bytes) -> str:
+    async def _extract_from_pdf(self, pdf_bytes: bytes) -> str:
         """
         Extract text from a PDF document using OCR.
 
@@ -107,7 +107,7 @@ class TextExtractionService:
                 "OCR service is required to extract text from PDFs"
             )
 
-        return self.ocr_service.run_ocr(pdf_bytes)
+        return await self.ocr_service.run_ocr(pdf_bytes)
 
     def _extract_from_txt(self, txt_bytes: bytes) -> str:
         """

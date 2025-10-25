@@ -16,7 +16,7 @@ class MockOCRService(OCRService):
         """
         self.mock_text = mock_text
 
-    def run_ocr(self, pdf_bytes: bytes) -> str:
+    async def run_ocr(self, pdf_bytes: bytes) -> str:
         """
         Returns the pre-configured mock text, ignoring the input bytes.
 

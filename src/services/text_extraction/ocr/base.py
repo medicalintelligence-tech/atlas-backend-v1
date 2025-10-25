@@ -8,7 +8,7 @@ class OCRService(ABC):
     """
 
     @abstractmethod
-    def run_ocr(self, pdf_bytes: bytes) -> str:
+    async def run_ocr(self, pdf_bytes: bytes) -> str:
         """
         Extract text from PDF bytes using OCR.
 
