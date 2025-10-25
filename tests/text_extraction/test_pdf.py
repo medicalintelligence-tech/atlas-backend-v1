@@ -1,3 +1,13 @@
+from pydantic import BaseModel, Field
+
+
+class TextExtractionResult(BaseModel):
+    text: str
+    character_length: int
+    token_length: int
+    duration: float = Field(description="duration in milliseconds")
+
+
 # initial state
 # TODO - need bytes for a dummy pdf document - should be pretty small, let's call it 25 words
 # TODO - content type is pdf
