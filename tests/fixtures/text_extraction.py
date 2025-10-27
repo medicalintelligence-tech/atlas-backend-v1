@@ -153,3 +153,10 @@ DUMMY_HTML_BYTES = """<!DOCTYPE html>
 """.encode(
     "utf-8"
 )
+
+# Plain text test fixtures
+PLAIN_TEXT_EXPECTED_TEXT = "Patient notes: Initial consultation completed. Blood pressure readings elevated. Recommend follow-up in two weeks for reassessment and treatment adjustment."
+
+PLAIN_TEXT_CONTENT_TYPE = "text/plain"
+
+DUMMY_PLAIN_TEXT_BYTES = PLAIN_TEXT_EXPECTED_TEXT.encode("utf-8")
