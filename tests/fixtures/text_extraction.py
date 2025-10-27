@@ -126,3 +126,30 @@ startxref
 """.encode(
     "utf-8"
 )
+
+# HTML test fixtures
+HTML_EXPECTED_TEXT = "Medical Report Patient: John Doe Diagnosis: The patient presents with chronic hypertension and type 2 diabetes. Treatment plan includes lifestyle modifications and medication management."
+
+HTML_CONTENT_TYPE = "text/html"
+
+DUMMY_HTML_BYTES = """<!DOCTYPE html>
+<html>
+<body>
+    <div class="header">
+        <h1>Medical Report</h1>
+    </div>
+    <div class="content">
+        <h2>Patient: John Doe</h2>
+        <p><strong>Diagnosis:</strong></p>
+        <p>The patient presents with chronic hypertension and type 2 diabetes.</p>
+        <p>Treatment plan includes lifestyle modifications and medication management.</p>
+    </div>
+    <script>
+        // This script content should be ignored
+        console.log("This should not appear in extracted text");
+    </script>
+</body>
+</html>
+""".encode(
+    "utf-8"
+)

@@ -1,5 +1,8 @@
+import re
 import time
 from typing import Optional
+
+from bs4 import BeautifulSoup
 
 from src.schemas.text_extraction import TextExtractionResult
 from src.utils.tokens import count_tokens
@@ -84,6 +87,8 @@ class TextExtractionService:
             return await self._extract_from_pdf(document_bytes)
         elif content_type == "text/plain":
             return self._extract_from_txt(document_bytes)
+        elif content_type == "text/html":
+            return self._extract_from_html(document_bytes)
         else:
             raise UnsupportedContentTypeError(
                 f"Content type '{content_type}' is not supported"
@@ -120,3 +125,22 @@ class TextExtractionService:
             The decoded text
         """
         return txt_bytes.decode("utf-8")
+
+    def _extract_from_html(self, html_bytes: bytes) -> str:
+        """
+        Extract text from an HTML document using BeautifulSoup.
+
+        Args:
+            html_bytes: The HTML document as bytes
+
+        Returns:
+            The extracted and cleaned text
+        """
+        # Parse HTML with BeautifulSoup
+        soup = BeautifulSoup(html_bytes, "html.parser")
+
+        # Extract text, removing extra whitespace
+        text = soup.get_text(separator=" ")
+        text = re.sub(r"\s+", " ", text).strip()
+
+        return text
