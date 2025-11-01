@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 
@@ -15,6 +16,10 @@ class Settings(BaseSettings):
     # Azure Document Intelligence
     azure_document_intelligence_endpoint: str | None = None
     azure_document_intelligence_api_key: str | None = None
+
+    # LLM API Keys
+    anthropic_api_key: Optional[str] = None
+    openai_api_key: Optional[str] = None
 
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", case_sensitive=False, extra="ignore"
