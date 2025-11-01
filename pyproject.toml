@@ -32,8 +32,3 @@ log_cli = true
 log_cli_level = "INFO"
 log_cli_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 log_cli_date_format = "%H:%M:%S"
-
-# Silence noisy third-party loggers
-log_level_openai = "WARNING"
-log_level_httpcore = "WARNING"
-log_level_httpx = "WARNING"

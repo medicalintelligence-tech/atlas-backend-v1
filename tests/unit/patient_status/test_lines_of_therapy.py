@@ -85,7 +85,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import Optional, List
 from datetime import date, datetime
 from enum import Enum
-from dataclasses import dataclass, field as dataclass_field
+from dataclasses import dataclass, field as dataclass_field, asdict
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.models.anthropic import AnthropicModel, AnthropicModelSettings
 from pydantic_ai.providers.anthropic import AnthropicProvider
@@ -93,6 +93,7 @@ from pydantic_ai.models.openai import OpenAIResponsesModel, OpenAIResponsesModel
 from pydantic_ai.providers.openai import OpenAIProvider
 from config.settings import settings
 import pytest
+import json
 
 
 class DiseaseSettingEnum(str, Enum):
@@ -806,14 +807,12 @@ async def extract_lines_of_therapy_async(
 
         if validation_output.is_valid:
             print("✅ Validation passed!")
+            print(validation_output.model_dump_json(indent=2))
             break
 
         # Show validation feedback
-        print(f"❌ Validation failed: {validation_output.feedback}")
-        if validation_output.specific_issues:
-            print("📋 Specific issues:")
-            for i, issue in enumerate(validation_output.specific_issues, 1):
-                print(f"   {i}. {issue}")
+        print("❌ Validation failed:")
+        print(validation_output.model_dump_json(indent=2))
 
         # Generate corrections
         correction_prompt = f"""
@@ -831,7 +830,7 @@ async def extract_lines_of_therapy_async(
         operations = correction_result.output.operations
 
         print(f"📝 Generated {len(operations)} correction operations")
-        print(f"💭 Rationale: {correction_result.output.rationale}")
+        print(correction_result.output.model_dump_json(indent=2))
 
         # Apply corrections
         print("\n⚙️  Applying corrections...")
@@ -856,12 +855,13 @@ async def extract_lines_of_therapy_async(
         error_msg = f"Validation failed after {max_iterations} iterations"
         print(f"\n❌ {error_msg}")
         print("\nValidation history:")
-        for attempt in state.validation_history:
-            print(
-                f"  - Iteration {attempt.iteration}: {'VALID' if attempt.is_valid else 'INVALID'}"
+        print(
+            json.dumps(
+                [asdict(attempt) for attempt in state.validation_history],
+                indent=2,
+                default=str,
             )
-            if attempt.feedback:
-                print(f"    Feedback: {attempt.feedback}")
+        )
 
         raise ValueError(
             f"{error_msg}. Last feedback: {state.validation_history[-1].feedback if state.validation_history else 'None'}"
@@ -887,10 +887,7 @@ async def extract_lines_of_therapy_async(
 
     print("\n" + "=" * 80)
     print("🎉 Extraction Complete!")
-    print(f"   Success: {result.success}")
-    print(f"   Iterations: {result.iterations_used}")
-    print(f"   Issues Found: {result.total_issues_found}")
-    print(f"   Lines Extracted: {len(extraction.lines_of_therapy)}")
+    print(result.model_dump_json(indent=2))
     print("=" * 80)
 
     return result
@@ -976,13 +973,4 @@ async def test_extract_lines_of_therapy():
     print("TEST PASSED!")
     print("=" * 80)
     print(f"\nExtracted {len(result.extraction.lines_of_therapy)} lines of therapy:")
-    for i, line in enumerate(result.extraction.lines_of_therapy, 1):
-        print(f"\nLine {i}:")
-        print(f"  Regimen: {line.regimen_name}")
-        print(f"  Setting: {line.disease_setting.value}")
-        print(f"  Intent: {line.treatment_intent.value}")
-        print(f"  Status: {line.current_status.value}")
-        print(f"  Start: {line.start_date}")
-        print(f"  End: {line.end_date}")
-        print(f"  Drugs: {', '.join([d.name for d in line.specific_drugs])}")
-        print(f"  Confidence: {line.confidence_score}")
+    print(result.extraction.model_dump_json(indent=2))
