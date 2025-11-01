@@ -76,6 +76,11 @@
 # - optional list of extraction challenges (should be short and brief)
 
 
+# TODO - need a deidentified progress note to use for this once you get it runing
+
+# then you need to clean this up, there's a lot of shared stuff that you'll be doing, for example the whole validation loop and search and replace and the model being used is all going to be shared across this type of thing, so we can refactor later but just wanted to remind myself to do it
+
+
 from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import Optional, List
 from datetime import date, datetime
