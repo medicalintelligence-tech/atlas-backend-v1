@@ -2,69 +2,30 @@
 # - I want to be able to extract molecular/genomic findings from document context (pathology reports, genomic test results)
 
 # The reason i want to extract this data is so i can do the following types of queries
-# - how many patients have KRAS mutations
-# - which patients have actionable mutations (EGFR, ALK, etc.)
-# - group patients by TMB status or PD-L1 expression
+# - patient has KRAS G12D mutation (somatic or germline)
+# - patient has HER2 3+
+# - patient has MTAP deletion
+# - group patients by TMB status or MSI status
 # - find patients with specific biomarker profiles
 
-# to do this you need the following functionality
+# Key insight: Use discriminated union pattern
+# - Base class with shared fields
+# - Four specific finding types: VariantFinding, CNAFinding, ExpressionFinding, SignatureFinding
+# - This makes it structurally impossible to put wrong data in wrong fields
+# - Makes queries precise and extraction instructions clear
 
-# provide some document context as text
-# provide a system prompt
-# provide the model to use
-# provide the output model you want to use for the extraction
-# provide a validator that will validate the output
-# provide the max number of iterations you want to allow the model to run
+# Normalization strategy:
+# - Enums for truly limited options (Origin, FindingType)
+# - Strings with standardization for variable fields (canonical_variant, gene, etc.)
+# - Tell the model to normalize to canonical forms
 
-# what will then happen is this data will be provided to an agent that can do the following
-# - do the initial extraction
-# - run the validation loop where it
-# -- validates the output is correctly in line with the original system prompt
-# -- provides feedback if the output is not correct
-# -- uses that feedback to create search and replace tool calls to modify the output
-# -- does this in a loop until max iterations hit or the output is complete
-
-# NOTE: because we're doing search and replace we might have to provide the output of the model back in as json and then allow the model to do a search and replace on that, then convert it back into the structured output model i originally wanted
-# - so you need the ability to convert structured output to json which you can do with model dump json, then edit that json, then convert that json back into the original structured model - shouldn't be too hard since you're using pydantic
-
-# so how do you know this worked ?
-# - well for us right now we'll be doing a unit test where we simply mock the output of the llm so that we can just make sure this setup is working
-# - then we'll do an integration test where we run it to make sure it works with live data, once that's working you can start doing the evals i suppose
-
-# now that i'm saying this though i think the smart move might actually be to start with the evals, cause there all you need is
-# - document context
-# - system prompt
-# - model to use
-# - validator
-# - max iterations
-
-# - expected output
-# -- so given some input, what are you expecting the output to be, and this can be llm as judge which will likely be the move, but you can also validate some things deterministicly, for example number of mutations found, specific mutations expected, etc.
-
-# keep in mind that you need to get this info out so that you can setup the infrastructure to enable you to ultimately provide document context, system prompt, and output model, and have that data extracted.
-
-# once you can extract that data, then you can save it to a db and have that data queried so you can start doing some really good feasability analysis.
-
-# so what's the simplest thing you can do right now
-# - you need an output model for the resulting extraction for molecular findings
-
-# at a high level what i need is
-# - test source (pathology report, genomic test result)
-# - test date
-# - test type (NGS, IHC, FISH, PCR, etc.)
-# - mutations found (gene, variant, significance)
-# - biomarkers (PD-L1, TMB, MSI, etc.)
-# - supporting evidence
-
-# the base unit here is the source of the information
-# - so in this case you really just have pathology or genomic testing results
-# - each test result can have multiple findings (mutations, biomarkers)
-
-# I also want to try a new model for the output that can handle variations much more effectively
+# Mutation constraints:
+# - Only extract pathogenic or likely_pathogenic mutations (skip VUS)
+# - Max 15 mutations per report (prioritize most clinically relevant)
 
 
 from pydantic import BaseModel, Field, field_validator, model_validator
-from typing import Optional, List
+from typing import Optional, List, Union, Literal
 from datetime import date, datetime
 from enum import Enum
 from dataclasses import dataclass, field as dataclass_field, asdict
@@ -78,138 +39,176 @@ import pytest
 import json
 
 
-class TestSourceEnum(str, Enum):
-    """Source of the molecular/genomic test"""
+# ============================================================================
+# ENUMS - Only for truly limited options
+# ============================================================================
 
-    PATHOLOGY_REPORT = "pathology_report"
-    GENOMIC_TEST_RESULT = "genomic_test_result"
-    LAB_RESULT = "lab_result"
+
+class Origin(str, Enum):
+    """Biological origin of the finding"""
+
+    SOMATIC = "somatic"
+    GERMLINE = "germline"
     UNKNOWN = "unknown"
 
 
-class TestTypeEnum(str, Enum):
-    """Type of molecular/genomic test performed"""
+class FindingType(str, Enum):
+    """Type of molecular finding"""
 
-    NGS = "ngs"  # Next Generation Sequencing
-    IHC = "ihc"  # Immunohistochemistry
-    FISH = "fish"  # Fluorescence In Situ Hybridization
-    PCR = "pcr"  # Polymerase Chain Reaction
-    SANGER = "sanger"  # Sanger sequencing
-    RT_PCR = "rt_pcr"  # Reverse Transcriptase PCR
-    OTHER = "other"
-    UNKNOWN = "unknown"
+    VARIANT = "variant"
+    CNA = "cna"
+    EXPRESSION = "expression"
+    SIGNATURE = "signature"
 
 
-class MutationSignificanceEnum(str, Enum):
-    """Clinical significance of a mutation"""
-
-    PATHOGENIC = "pathogenic"
-    LIKELY_PATHOGENIC = "likely_pathogenic"
-    VARIANT_OF_UNCERTAIN_SIGNIFICANCE = "vus"
-    LIKELY_BENIGN = "likely_benign"
-    BENIGN = "benign"
-    ACTIONABLE = "actionable"  # Has targeted therapy available
-    UNKNOWN = "unknown"
+# ============================================================================
+# BASE MODEL - Shared fields across all finding types
+# ============================================================================
 
 
-class BiomarkerTypeEnum(str, Enum):
-    """Type of biomarker"""
+class MolecularFindingBase(BaseModel):
+    """Base class for all molecular findings"""
 
-    PD_L1_TPS = "pd_l1_tps"  # PD-L1 Tumor Proportion Score
-    PD_L1_CPS = "pd_l1_cps"  # PD-L1 Combined Positive Score
-    TMB = "tmb"  # Tumor Mutational Burden
-    MSI = "msi"  # Microsatellite Instability
-    TMB_HIGH = "tmb_high"
-    MSI_HIGH = "msi_high"
-    HER2 = "her2"
-    HR_STATUS = "hr_status"  # Hormone Receptor Status
-    OTHER = "other"
-
-
-class Mutation(BaseModel):
-    """Single genetic mutation/variant"""
-
-    gene: str = Field(
-        description="Gene name (e.g., 'KRAS', 'EGFR', 'ALK')", min_length=1
+    finding_type: FindingType = Field(description="Type of finding (discriminator)")
+    origin: Origin = Field(description="Somatic vs germline vs unknown")
+    test_method: str = Field(
+        description="Test method (NGS, IHC, FISH, PCR, etc.)", min_length=1
     )
-    variant: str = Field(
-        description="Specific variant notation (e.g., 'G12C', 'L858R', 'exon 19 deletion')",
-        min_length=1,
-    )
-    significance: MutationSignificanceEnum = Field(
-        description="Clinical significance of this mutation"
-    )
-    variant_frequency: Optional[float] = Field(
-        None, description="Variant allele frequency (0-1) if available"
-    )
-    notes: Optional[str] = Field(
-        None, description="Additional details about the mutation"
-    )
-
-
-class Biomarker(BaseModel):
-    """Single biomarker result"""
-
-    biomarker_type: BiomarkerTypeEnum = Field(description="Type of biomarker")
-    value: Optional[str] = Field(
-        None, description="Value (e.g., '1%', 'high', 'positive', '18.9')"
-    )
-    unit: Optional[str] = Field(None, description="Unit of measurement if applicable")
-    interpretation: Optional[str] = Field(
-        None,
-        description="Clinical interpretation (e.g., 'high', 'positive', 'negative')",
-    )
-    notes: Optional[str] = Field(None, description="Additional details")
-
-
-class MolecularTestResult(BaseModel):
-    """Single molecular/genomic test result"""
-
-    test_source: TestSourceEnum = Field(description="Source of the test")
-    test_type: TestTypeEnum = Field(description="Type of test performed")
     test_date: Optional[date] = Field(
         None, description="Date test was performed or reported"
     )
     test_name: Optional[str] = Field(
-        None,
-        description="Name of the test (e.g., 'Omniseq', 'FoundationOne', 'Guardant360')",
+        None, description="Name of test (e.g., 'Omniseq', 'FoundationOne')"
     )
-    specimen_type: Optional[str] = Field(
-        None, description="Type of specimen tested (e.g., 'tissue', 'blood', 'plasma')"
+    raw_text: str = Field(
+        description="Raw text from report showing this finding", min_length=1
     )
-    mutations: List[Mutation] = Field(
-        default_factory=list, description="Mutations/variants found"
+    clinical_significance: Optional[str] = Field(
+        None, description="Clinical significance or interpretation"
     )
-    biomarkers: List[Biomarker] = Field(
-        default_factory=list, description="Biomarker results"
+
+
+# ============================================================================
+# SPECIFIC FINDING TYPES
+# ============================================================================
+
+
+class VariantFinding(MolecularFindingBase):
+    """Genetic mutation/variant (SNV, indel, etc.)"""
+
+    finding_type: Literal[FindingType.VARIANT] = FindingType.VARIANT
+
+    gene: str = Field(
+        description="Gene name using HUGO nomenclature (e.g., 'KRAS', 'EGFR')",
+        min_length=1,
     )
-    supporting_evidence: List[str] = Field(
-        default_factory=list, description="Relevant excerpts from document"
+    canonical_variant: str = Field(
+        description="Standardized variant notation (e.g., 'G12D', 'L858R', 'exon 19 deletion')",
+        min_length=1,
     )
-    confidence_score: float = Field(
-        description="Confidence in extraction (0-1)", ge=0.0, le=1.0
+    protein_change: Optional[str] = Field(
+        None, description="Protein change notation if available (e.g., 'p.G12D')"
     )
-    notes: Optional[str] = Field(None, description="Additional clarifications")
+    cdna_change: Optional[str] = Field(
+        None, description="cDNA change notation if available (e.g., 'c.35G>A')"
+    )
+    variant_frequency: Optional[float] = Field(
+        None, description="Variant allele frequency (0-1) if available", ge=0.0, le=1.0
+    )
+    notes: Optional[str] = Field(None, description="Additional details")
+
+
+class CNAFinding(MolecularFindingBase):
+    """Copy number alteration"""
+
+    finding_type: Literal[FindingType.CNA] = FindingType.CNA
+
+    gene: str = Field(
+        description="Gene name using HUGO nomenclature (e.g., 'MTAP', 'MET')",
+        min_length=1,
+    )
+    alteration_direction: str = Field(
+        description="Direction of alteration: 'amplification', 'deletion', 'gain', 'loss', 'loss_of_heterozygosity'",
+        min_length=1,
+    )
+    copy_number: Optional[float] = Field(None, description="Copy number if quantified")
+    notes: Optional[str] = Field(None, description="Additional details")
+
+
+class ExpressionFinding(MolecularFindingBase):
+    """Biomarker expression level"""
+
+    finding_type: Literal[FindingType.EXPRESSION] = FindingType.EXPRESSION
+
+    biomarker: str = Field(
+        description="Biomarker name (e.g., 'HER2', 'PD-L1', 'ER', 'PR')", min_length=1
+    )
+    intensity_score: str = Field(
+        description="Expression level (e.g., '3+', '2+', '50%', 'positive', 'negative')",
+        min_length=1,
+    )
+    score_scale: Optional[str] = Field(
+        None, description="Scale used (e.g., 'IHC 0-3+', 'TPS', 'CPS')"
+    )
+    quantitative_value: Optional[float] = Field(
+        None, description="Numeric value if applicable (e.g., 50 for 50% TPS)"
+    )
+    notes: Optional[str] = Field(None, description="Additional details")
+
+
+class SignatureFinding(MolecularFindingBase):
+    """Genomic signature or global biomarker"""
+
+    finding_type: Literal[FindingType.SIGNATURE] = FindingType.SIGNATURE
+
+    signature_type: str = Field(
+        description="Type of signature (e.g., 'MSI', 'TMB', 'dMMR', 'HRD', 'COSMIC-SBS1')",
+        min_length=1,
+    )
+    status: str = Field(
+        description="Status or interpretation (e.g., 'MSI-High', 'stable', 'deficient')",
+        min_length=1,
+    )
+    quantitative_value: Optional[float] = Field(
+        None, description="Numeric value if applicable (e.g., 18.9 for TMB)"
+    )
+    unit: Optional[str] = Field(
+        None, description="Unit of measurement (e.g., 'mutations/Mb')"
+    )
+    notes: Optional[str] = Field(None, description="Additional details")
+
+
+# Union type for discriminated parsing
+MolecularFinding = Union[
+    VariantFinding, CNAFinding, ExpressionFinding, SignatureFinding
+]
+
+
+# ============================================================================
+# EXTRACTION RESULT MODEL
+# ============================================================================
 
 
 class MolecularFindingsExtraction(BaseModel):
     """Complete extraction of molecular/genomic findings"""
 
-    test_results: List[MolecularTestResult] = Field(
-        description="All molecular/genomic test results in chronological order"
+    findings: List[MolecularFinding] = Field(
+        description="All molecular/genomic findings extracted from the document"
     )
 
     extraction_challenges: Optional[List[str]] = Field(
         None, description="Brief notes on any extraction difficulties"
     )
 
-    @field_validator("test_results")
+    @field_validator("findings")
     @classmethod
-    def validate_non_empty(cls, v):
-        """Ensure at least one test result if mutations or biomarkers are present"""
-        if len(v) == 0:
-            # Allow empty if truly no findings, but warn
-            return v
+    def validate_variant_limit(cls, v):
+        """Ensure max 15 variants"""
+        variants = [f for f in v if isinstance(f, VariantFinding)]
+        if len(variants) > 15:
+            raise ValueError(
+                f"Too many variants extracted ({len(variants)}). Maximum is 15. Prioritize most clinically relevant."
+            )
         return v
 
 
@@ -367,153 +366,193 @@ class ExtractionResult(BaseModel):
 # SYSTEM PROMPTS
 # ============================================================================
 
-EXTRACTION_SYSTEM_PROMPT = """You are an expert medical data extraction specialist. Your task is to extract molecular/genomic findings from medical documents (pathology reports, genomic test results, lab reports) and represent them in a structured markdown format.
+EXTRACTION_SYSTEM_PROMPT = """You are an expert medical data extraction specialist. Your task is to extract molecular/genomic findings from medical documents (pathology reports, genomic test results) and represent them in a structured markdown format.
 
-## What Counts as Molecular/Genomic Findings
+## Finding Types and Structure
 
-Include all molecular and genomic test results:
-- Genetic mutations/variants (EGFR, KRAS, ALK, BRAF, PIK3CA, etc.)
-- Biomarker results (PD-L1, TMB, MSI, HER2, hormone receptor status)
-- Genomic test results (NGS panels, targeted sequencing, IHC, FISH, PCR)
-- Variant allele frequencies
-- Clinical significance annotations
+You must classify each finding into ONE of four types:
 
-Do NOT include:
-- Routine lab values (CBC, chemistry panels, liver function tests)
-- Imaging results
-- Treatment history (that's a separate extraction)
-- Pathology diagnoses without molecular data
+1. **VARIANT** - Genetic mutations/variants
+2. **CNA** - Copy number alterations
+3. **EXPRESSION** - Biomarker expression levels
+4. **SIGNATURE** - Genomic signatures (MSI, TMB, etc.)
 
-## Test Sources
+Each finding type has DIFFERENT fields - you cannot put intensity_score in a variant or canonical_variant in an expression finding.
 
-Each test result should be categorized by source:
-- pathology_report: Findings from pathology reports with molecular testing
-- genomic_test_result: Dedicated genomic testing reports (FoundationOne, Guardant360, Omniseq, etc.)
-- lab_result: Other lab-based molecular testing
+## VARIANT Findings (Mutations)
 
-## Test Types
+**CRITICAL CONSTRAINTS**:
+- ONLY extract pathogenic or likely pathogenic mutations
+- SKIP variants of uncertain significance (VUS)
+- SKIP benign or likely benign variants
+- MAXIMUM 15 variants per document
+- If more than 15, prioritize by clinical actionability and significance
 
-Identify the type of test performed:
-- NGS: Next Generation Sequencing (comprehensive panels)
-- IHC: Immunohistochemistry (protein expression)
-- FISH: Fluorescence In Situ Hybridization (gene rearrangements)
-- PCR: Polymerase Chain Reaction (targeted mutations)
-- Sanger: Sanger sequencing
-- RT-PCR: Reverse Transcriptase PCR
-- Other: Other specialized tests
+Extract:
+- Gene (HUGO nomenclature): "KRAS", "EGFR", "BRAF"
+- Canonical variant (protein-level): "G12D", "L858R", "V600E", "exon 19 deletion"
+- Protein change (optional): "p.G12D"
+- cDNA change (optional): "c.35G>A"
+- Variant frequency (optional): 0.42 (as decimal)
+- Origin: somatic/germline/unknown
 
-## Mutations
+**Normalization**:
+- Standardize gene names to HUGO symbols
+- Use protein-level notation for canonical_variant ("G12D" not "Gly12Asp")
+- If report says "mutation detected" without frequency, that's fine - leave null
 
-For each mutation, extract:
-- Gene name (standardized: EGFR, KRAS, ALK, etc.)
-- Variant notation (exact notation from report: G12C, L858R, exon 19 deletion, etc.)
-- Clinical significance (pathogenic, likely_pathogenic, vus, actionable, etc.)
-- Variant frequency if available (as decimal 0-1)
-- Any relevant notes
-
-Common actionable mutations:
-- EGFR: L858R, exon 19 deletions, T790M, exon 20 insertions
+**Common actionable mutations to prioritize**:
+- EGFR: L858R, exon 19 deletions, T790M, C797S, exon 20 insertions
 - KRAS: G12C, G12D, G12V, G13D
-- ALK: Rearrangements, fusions
 - BRAF: V600E, V600K
-- ROS1: Rearrangements
-- RET: Rearrangements
-- NTRK: Fusions
+- ALK: rearrangements, fusions (extract as "ALK rearrangement")
+- ROS1: rearrangements
+- RET: rearrangements
+- NTRK: fusions
+- MET: exon 14 skipping
+- PIK3CA: H1047R, E545K
+- BRCA1/BRCA2: pathogenic mutations (usually germline)
 
-## Biomarkers
+## CNA Findings (Copy Number Alterations)
 
-Extract biomarker results:
-- PD-L1 TPS (Tumor Proportion Score): Usually expressed as percentage (e.g., "1%", "50%")
-- PD-L1 CPS (Combined Positive Score): Usually expressed as integer (e.g., "10", "50")
-- TMB (Tumor Mutational Burden): Usually expressed as mutations/Mb (e.g., "18.9", "high")
-- MSI (Microsatellite Instability): Usually "stable", "high", or "MSI-H"
-- HER2: Usually "positive", "negative", or IHC score (0, 1+, 2+, 3+)
-- HR Status: Estrogen/progesterone receptor status
+Extract:
+- Gene: "MTAP", "MET", "EGFR", "FGFR1"
+- Alteration direction: "amplification", "deletion", "gain", "loss", "loss_of_heterozygosity"
+- Copy number (optional): 8.2
+- Origin: somatic/germline/unknown
 
-## Key Principles
+**Normalization**:
+- Use canonical terms: "amplification" (not "amp"), "deletion" (not "del")
+- Common CNAs: EGFR amplification, MET amplification, MTAP deletion, CDKN2A deletion
 
-Dates: Use YYYY-MM-DD format. If only month/year given, use first of month (June 2023 = 2023-06-01). Calculate relative dates from document date. Always provide best estimate.
+## EXPRESSION Findings (Biomarker Expression)
 
-Test dates: Extract when test was performed or reported. If multiple dates mentioned, use the most specific/accurate one.
+Extract:
+- Biomarker: "HER2", "PD-L1", "ER", "PR", "ALK", "ROS1"
+- Intensity score: "3+", "2+", "1+", "0", "50%", "positive", "negative"
+- Score scale (optional): "IHC 0-3+", "TPS", "CPS"
+- Quantitative value (optional): 50.0 (for "50%")
+- Origin: somatic/germline/unknown (usually somatic for expression)
 
-Variant notation: Preserve exact notation from the source document. Don't normalize (e.g., keep "G12C" as-is, not "Gly12Cys").
+**Normalization**:
+- Standardize biomarker names: "HER2" (not "Her-2" or "HER-2")
+- Preserve exact score as stated: "3+", "50%", "positive"
+- For PD-L1, note if it's TPS (Tumor Proportion Score) or CPS (Combined Positive Score) in score_scale
 
-Significance: Classify mutations based on clinical significance:
-- pathogenic: Clearly disease-causing
-- likely_pathogenic: Strong evidence but not definitive
-- actionable: Has targeted therapy available (e.g., EGFR mutations → osimertinib)
-- vus: Variant of uncertain significance
-- likely_benign/benign: Not disease-causing
+## SIGNATURE Findings (Genomic Signatures)
 
-Supporting evidence: Include relevant excerpts from documents showing the mutations, biomarkers, test names, dates, etc.
+Extract:
+- Signature type: "MSI", "TMB", "dMMR", "HRD", "COSMIC-SBS1", etc.
+- Status: "MSI-High", "MSI-Low", "stable", "high", "deficient", "proficient"
+- Quantitative value (optional): 18.9
+- Unit (optional): "mutations/Mb"
+- Origin: somatic/germline/unknown (usually somatic)
 
-Confidence score:
-- 0.9-1.0 = all info clear and exact
-- 0.7-0.9 = most info clear, minor inference needed
-- 0.5-0.7 = moderate ambiguity
-- 0.3-0.5 = significant uncertainty
-- <0.3 = very uncertain
+**Normalization**:
+- Use standard abbreviations: "MSI" (not "microsatellite instability")
+- Preserve status as stated: "MSI-High", "stable", "high"
+- For TMB, extract numeric value if given
 
-## Common Mistakes to Avoid
+## Shared Fields (All Finding Types)
 
-- Don't confuse variant notation (keep exact format from report)
-- Don't mix up different test results - each test should be separate
-- Don't include negative results unless explicitly stated (e.g., "No EGFR mutations detected")
-- Don't confuse wild-type/negative with missing data
-- Don't normalize gene names unnecessarily (use standard but preserve if report uses different)
+Every finding must have:
+- **finding_type**: variant/cna/expression/signature (determines which fields are valid)
+- **origin**: somatic/germline/unknown
+- **test_method**: "NGS", "IHC", "FISH", "PCR", "Sanger", "RT-PCR", "other"
+- **test_date**: YYYY-MM-DD (or null if not stated)
+- **test_name**: "Omniseq", "FoundationOne", "Guardant360" (or null)
+- **raw_text**: Exact excerpt from document showing this finding
+- **clinical_significance**: "pathogenic", "actionable", "resistance", etc. (or null)
+
+## Negative Results
+
+If report explicitly states "No mutations detected" or "EGFR: negative" or "ALK: negative", you can SKIP these. Only extract POSITIVE findings.
+
+Exception: If explicitly asked to extract negative results, do so, but prioritize positive findings if constrained by variant limit.
 
 ## Output Format
 
-Generate a markdown document with the following structure for each test result:
+Generate markdown with this structure for each finding:
 
 ```
-## Test Result 1
-Test Source: [pathology_report|genomic_test_result|lab_result|unknown]
-Test Type: [ngs|ihc|fish|pcr|sanger|rt_pcr|other|unknown]
+## Finding 1: [VARIANT|CNA|EXPRESSION|SIGNATURE]
+Finding Type: [variant|cna|expression|signature]
+Origin: [somatic|germline|unknown]
+Test Method: [test method]
 Test Date: YYYY-MM-DD or null
 Test Name: [test name or null]
-Specimen Type: [specimen type or null]
 
-Mutations:
-  - Gene: [gene name] | Variant: [variant notation] | Significance: [pathogenic|likely_pathogenic|vus|actionable|likely_benign|benign|unknown] | Frequency: [0-1 or null] | Notes: [notes or null]
+[TYPE-SPECIFIC FIELDS]
 
-Biomarkers:
-  - Type: [pd_l1_tps|pd_l1_cps|tmb|msi|her2|hr_status|other] | Value: [value or null] | Unit: [unit or null] | Interpretation: [interpretation or null] | Notes: [notes or null]
+For VARIANT:
+  Gene: [gene]
+  Canonical Variant: [variant]
+  Protein Change: [protein change or null]
+  cDNA Change: [cdna change or null]
+  Variant Frequency: [0-1 or null]
 
-Supporting Evidence:
-  - "[excerpt from document]"
-  - "[excerpt from document]"
+For CNA:
+  Gene: [gene]
+  Alteration Direction: [alteration direction]
+  Copy Number: [copy number or null]
 
-Confidence: [0.0-1.0]
-Notes: [optional notes]
+For EXPRESSION:
+  Biomarker: [biomarker]
+  Intensity Score: [score]
+  Score Scale: [scale or null]
+  Quantitative Value: [numeric value or null]
+
+For SIGNATURE:
+  Signature Type: [signature type]
+  Status: [status]
+  Quantitative Value: [value or null]
+  Unit: [unit or null]
+
+Raw Text: "[excerpt from document]"
+Clinical Significance: [significance or null]
+Notes: [notes or null]
 
 ---
 ```
 
-Separate each test result with `---` on its own line.
+Separate each finding with `---` on its own line.
+
+## Key Principles
+
+1. **Discriminate correctly** - Each finding is ONE type only
+2. **Normalize to canonical forms** - HUGO genes, protein-level variants, standard abbreviations
+3. **Prioritize clinical relevance** - For variants, actionable > pathogenic > likely pathogenic
+4. **Respect the 15 variant limit** - If genomic report has 50 mutations, extract top 15 most relevant
+5. **Skip VUS** - Do not extract variants of uncertain significance
+6. **Preserve exact values** - Don't round or modify scores/percentages
+7. **Extract from raw text** - Pull exact excerpts showing each finding
 """
 
 VALIDATION_SYSTEM_PROMPT = """You are a meticulous validator checking extracted molecular findings data. Your job is to verify that the markdown representation accurately captures all relevant information from the original document.
 
 ## Validation Checks
 
-1. **Completeness**: Are all molecular/genomic findings mentioned in the document captured in the markdown?
-2. **Accuracy**: Do the gene names, variants, biomarker values, and test details match the source material?
-3. **Proper Test Separation**: Are different test results correctly separated?
-4. **Format Compliance**: Does the markdown follow the expected structure?
-5. **Supporting Evidence**: Are there relevant excerpts that justify the extraction?
-6. **Confidence Appropriateness**: Does the confidence score reflect the clarity of information?
-7. **Variant Notation**: Are variants preserved exactly as stated in the source?
+1. **Completeness**: Are all clinically significant findings captured?
+2. **Correct Classification**: Is each finding in the right category (variant/cna/expression/signature)?
+3. **Variant Constraints**:
+   - Are there more than 15 variants? (FAIL if yes)
+   - Are VUS mutations included? (FAIL if yes)
+   - Are only pathogenic/likely pathogenic variants included? (PASS if yes)
+4. **Normalization**: Are genes, variants, biomarkers using standardized nomenclature?
+5. **Field Accuracy**: Do the type-specific fields match the finding type?
+6. **Format Compliance**: Does the markdown follow the expected structure?
+7. **Supporting Evidence**: Is raw_text present and relevant?
 
 ## What to Flag
 
-- Missing mutations or biomarkers
-- Incorrect gene names or variant notations
-- Wrong biomarker values or interpretations
-- Tests that should be combined but are separated (or vice versa)
-- Missing or weak supporting evidence
-- Formatting issues
-- Incorrect test type or source classification
+- VUS mutations included (should be excluded)
+- More than 15 variants
+- Benign variants included
+- Wrong finding type classification (e.g., HER2 IHC classified as variant instead of expression)
+- Non-standard gene names (e.g., "Her-2" instead of "HER2")
+- Missing finding_type or origin
+- Missing raw_text
+- Fields that don't belong to that finding type
 
 Provide specific, actionable feedback on what needs to be corrected."""
 
@@ -534,7 +573,15 @@ CORRECTION_SYSTEM_PROMPT = """You are a precise editor. Given validation feedbac
 - Fix one issue at a time
 - Keep changes minimal and targeted
 - Preserve markdown formatting
-- Preserve exact variant notation from source"""
+- When removing VUS mutations, remove the entire finding block including the `---` separator
+
+## Common Corrections
+
+- Remove VUS mutations: Find the entire "## Finding X: VARIANT" block through the `---` and replace with empty string
+- Fix gene names: "Her-2" → "HER2"
+- Fix finding type: "Finding Type: variant" → "Finding Type: expression" (for IHC results)
+- Remove excess variants: Remove lowest priority variants to get to 15 max
+"""
 
 
 # ============================================================================
@@ -672,11 +719,19 @@ async def extract_to_pydantic(markdown: str, model) -> MolecularFindingsExtracti
     extraction_agent = Agent(
         model=model,
         output_type=MolecularFindingsExtraction,
-        system_prompt="You are a precise data parser. Convert the provided markdown representation of molecular findings into the structured MolecularFindingsExtraction model. Preserve all information accurately.",
+        system_prompt="You are a precise data parser. Convert the provided markdown representation of molecular findings into the structured MolecularFindingsExtraction model. Use the finding_type field to determine which specific model to use (VariantFinding, CNAFinding, ExpressionFinding, or SignatureFinding). Preserve all information accurately.",
     )
 
     prompt = f"""
-    Convert the following markdown representation of molecular findings into the MolecularFindingsExtraction model:
+    Convert the following markdown representation of molecular findings into the MolecularFindingsExtraction model.
+    
+    Each finding will be one of four types based on the finding_type field:
+    - variant → VariantFinding (with gene, canonical_variant, etc.)
+    - cna → CNAFinding (with gene, alteration_direction, etc.)
+    - expression → ExpressionFinding (with biomarker, intensity_score, etc.)
+    - signature → SignatureFinding (with signature_type, status, etc.)
+    
+    Use the discriminated union pattern to parse each finding into the correct type.
 
     {markdown}
     """
@@ -842,7 +897,7 @@ async def extract_molecular_findings_async(
 
     extraction = await extract_to_pydantic(state.current_markdown, model)
 
-    print(f"✅ Successfully extracted {len(extraction.test_results)} test results")
+    print(f"✅ Successfully extracted {len(extraction.findings)} findings")
 
     result = ExtractionResult(
         success=True,
@@ -863,32 +918,46 @@ async def extract_molecular_findings_async(
 # ============================================================================
 # SAMPLE DATA
 # ============================================================================
-# NOTE - do with path and genomic testing results document
+
 SAMPLE_DOCUMENT = """
 Omniseq Comprehensive Genomic Profiling Report
 
 Patient: Naaji Jr, Leif
 DOB: 7/06/1954
 Test Date: 8/26/2024
-Specimen: Right upper lobe lung biopsy
+Specimen: Right upper lobe lung biopsy (tissue)
 
-Results:
-- KRAS G12C mutation detected (positive)
-- TMB: 18.9 mutations/Mb (high)
-- MSI: Stable
-- PD-L1 TPS: 1%
+RESULTS:
+
+Somatic Variants Detected:
+- KRAS c.35G>A (p.G12D) - Pathogenic, VAF: 42%
+- TP53 c.524G>A (p.R175H) - Pathogenic, VAF: 38%
+
+Somatic Copy Number Alterations:
+- MTAP deletion detected
+- CDKN2A homozygous deletion
+
+Tumor Mutational Burden (TMB):
+- 18.9 mutations/Mb (High)
+
+Microsatellite Instability (MSI):
+- MSI-Stable
+
+PD-L1 Expression (IHC, 22C3 antibody):
+- Tumor Proportion Score (TPS): 1%
+- Interpretation: Low expression
 
 Additional Testing:
-- EGFR: Negative
-- ALK: Negative
-- ROS1: Negative
-- HER2: Negative
-- MET: Negative
-- RET: Negative
-- NTRK: Negative
+- EGFR: No mutations detected
+- ALK: Negative by IHC
+- ROS1: Negative by IHC
+- HER2: Not amplified
+- MET: No exon 14 skipping mutations
+- RET: No rearrangements detected
+- NTRK: No fusions detected
 
-Interpretation:
-The tumor shows a KRAS G12C mutation with high tumor mutational burden. PD-L1 expression is low at 1%. No targetable alterations detected in EGFR, ALK, ROS1, HER2, MET, RET, or NTRK.
+INTERPRETATION:
+The tumor harbors a KRAS G12D mutation (actionable with KRAS G12C inhibitors in appropriate context) and TP53 R175H mutation. High tumor mutational burden (18.9 mutations/Mb) suggests potential benefit from immunotherapy. PD-L1 expression is low at 1% TPS. MTAP and CDKN2A deletions noted. No targetable alterations detected in EGFR, ALK, ROS1, HER2, MET, RET, or NTRK.
 """
 
 
@@ -906,53 +975,66 @@ async def test_extract_molecular_findings():
     # Verify result
     assert result.success is True
     assert result.extraction is not None
-    assert len(result.extraction.test_results) >= 1
+    assert len(result.extraction.findings) >= 5
 
-    # Check first test result
-    test_result = result.extraction.test_results[0]
-    assert test_result.test_source == TestSourceEnum.GENOMIC_TEST_RESULT
-    assert test_result.test_type == TestTypeEnum.NGS
-    assert test_result.test_name == "Omniseq" or "Omniseq" in str(test_result.test_name)
-    assert test_result.test_date == date(2024, 8, 26)
+    # Separate findings by type
+    variants = [f for f in result.extraction.findings if isinstance(f, VariantFinding)]
+    cnas = [f for f in result.extraction.findings if isinstance(f, CNAFinding)]
+    expressions = [
+        f for f in result.extraction.findings if isinstance(f, ExpressionFinding)
+    ]
+    signatures = [
+        f for f in result.extraction.findings if isinstance(f, SignatureFinding)
+    ]
 
-    # Check mutations
-    assert len(test_result.mutations) >= 1
-    kras_mutation = next(
-        (m for m in test_result.mutations if m.gene.upper() == "KRAS"), None
-    )
-    assert kras_mutation is not None
-    assert "G12C" in kras_mutation.variant
+    # Check variant constraint
+    assert len(variants) <= 15, "Should have max 15 variants"
 
-    # Check biomarkers
-    assert len(test_result.biomarkers) >= 3  # TMB, MSI, PD-L1
+    # Check KRAS variant
+    kras = next((v for v in variants if v.gene.upper() == "KRAS"), None)
+    assert kras is not None
+    assert "G12D" in kras.canonical_variant or "G12C" in kras.canonical_variant
+    assert kras.origin == Origin.SOMATIC
 
-    tmb_biomarker = next(
+    # Check TP53 variant
+    tp53 = next((v for v in variants if v.gene.upper() == "TP53"), None)
+    assert tp53 is not None
+
+    # Check CNAs
+    assert len(cnas) >= 2  # MTAP deletion, CDKN2A deletion
+    mtap = next((c for c in cnas if c.gene.upper() == "MTAP"), None)
+    assert mtap is not None
+    assert "deletion" in mtap.alteration_direction.lower()
+
+    # Check PD-L1 expression
+    assert len(expressions) >= 1
+    pdl1 = next(
         (
-            b
-            for b in test_result.biomarkers
-            if b.biomarker_type == BiomarkerTypeEnum.TMB
+            e
+            for e in expressions
+            if "PD-L1" in e.biomarker.upper() or "PDL1" in e.biomarker.upper()
         ),
         None,
     )
-    assert tmb_biomarker is not None
-    assert (
-        "18.9" in str(tmb_biomarker.value)
-        or "high" in str(tmb_biomarker.interpretation).lower()
-    )
+    assert pdl1 is not None
+    assert "1" in pdl1.intensity_score or "low" in pdl1.intensity_score.lower()
 
-    pdl1_biomarker = next(
-        (
-            b
-            for b in test_result.biomarkers
-            if b.biomarker_type == BiomarkerTypeEnum.PD_L1_TPS
-        ),
-        None,
-    )
-    assert pdl1_biomarker is not None
-    assert "1" in str(pdl1_biomarker.value)
+    # Check signatures
+    assert len(signatures) >= 2  # TMB and MSI
+    tmb = next((s for s in signatures if "TMB" in s.signature_type.upper()), None)
+    assert tmb is not None
+    assert "high" in tmb.status.lower() or tmb.quantitative_value is not None
+
+    msi = next((s for s in signatures if "MSI" in s.signature_type.upper()), None)
+    assert msi is not None
 
     print("\n" + "=" * 80)
     print("TEST PASSED!")
     print("=" * 80)
-    print(f"\nExtracted {len(result.extraction.test_results)} test results:")
+    print(f"\nExtracted {len(result.extraction.findings)} findings:")
+    print(f"  - {len(variants)} variants")
+    print(f"  - {len(cnas)} CNAs")
+    print(f"  - {len(expressions)} expression findings")
+    print(f"  - {len(signatures)} signature findings")
+    print("\nFull extraction:")
     print(result.extraction.model_dump_json(indent=2))
