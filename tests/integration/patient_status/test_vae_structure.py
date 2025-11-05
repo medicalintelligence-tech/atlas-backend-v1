@@ -212,10 +212,11 @@ class NeuroendocrineTumor(BaseModel):
 
 
 class PatientCancerExtraction(BaseModel):
-    """Complete cancer extraction for a patient"""
+    """Complete cancer profile for a patient"""
 
-    current_cancer: SolidCancer | BloodCancer | NeuroendocrineTumor = Field(
-        description="The patient's current cancer"
+    cancers: Optional[list[SolidCancer | BloodCancer | NeuroendocrineTumor]] = Field(
+        None,
+        description="All cancers for this patient (can have multiple, can be different types)",
     )
     extraction_challenges: Optional[list[str]] = Field(
         None, description="Brief notes on any extraction difficulties"
@@ -934,9 +935,11 @@ async def test_extract_patient_cancer():
     # Verify result
     assert result.success is True
     assert result.extraction is not None
+    assert result.extraction.cancers is not None
+    assert len(result.extraction.cancers) >= 1
 
     # Check cancer type
-    cancer = result.extraction.current_cancer
+    cancer = result.extraction.cancers[0]
     assert isinstance(cancer, SolidCancer)
     assert cancer.cancer_type == CancerType.SOLID
     assert "adenocarcinoma" in cancer.histology.lower()
@@ -994,5 +997,5 @@ async def test_extract_patient_cancer():
     print("\n" + "=" * 80)
     print("TEST PASSED!")
     print("=" * 80)
-    print(f"\nExtracted cancer data:")
+    print(f"\nExtracted {len(result.extraction.cancers)} cancer(s):")
     print(result.extraction.model_dump_json(indent=2))
