@@ -90,9 +90,6 @@ class MolecularProfile(BaseModel):
 class Tumor(BaseModel):
     """Individual tumor site that can have its own metastases"""
 
-    site_id: str = Field(
-        description="Unique identifier: 'primary_lung', 'liver_met_1', 'bone_met_2'"
-    )
     anatomic_location: str = Field(
         description="Precise location: 'right upper lobe lung', 'liver segment 6', 'L3 vertebra'"
     )
@@ -274,7 +271,6 @@ Prior Therapy Lines: [number or null]
 Prior Therapies: [drug1, drug2, drug3, ...] or null
 
 ## Primary Tumor
-Site ID: primary_[location]
 Location: [anatomic location]
 Is Primary: true
 Size: [size in mm or null]
@@ -295,7 +291,6 @@ HRD: [status or null]
 ### Metastases
 
 #### Metastasis 1
-Site ID: [unique id]
 Location: [anatomic location]
 Is Primary: false
 Size: [size or null]
@@ -328,7 +323,7 @@ Prior Transplant: [details or null]
 
 ## Critical Rules
 
-1. **Site IDs must be unique** - Use descriptive IDs like "primary_lung", "liver_met_1", "bone_met_2"
+1. **Descriptive locations** - Use precise anatomic locations: "right upper lobe lung", "liver segment 6", "L3 vertebra", "left frontal brain"
 2. **Recursive structure** - If a met has spawned further mets, nest them appropriately
 3. **Omit null fields** - Don't include fields with no information
 4. **Specific drug names** - Capture actual drug names as documented
@@ -345,7 +340,7 @@ VALIDATION_SYSTEM_PROMPT = """You are a meticulous validator checking extracted 
 2. **Tumor Hierarchy** (for Solid/NET):
    - Is there exactly one primary tumor?
    - Are metastases properly nested under the tumor they originated from?
-   - Are all site IDs unique?
+   - Are anatomic locations descriptive and precise?
 
 3. **Molecular Profiles**:
    - Are mutations in standard format (e.g., "EGFR L858R")?
@@ -369,7 +364,7 @@ VALIDATION_SYSTEM_PROMPT = """You are a meticulous validator checking extracted 
 
 - Missing cancer type or incorrect classification
 - Multiple primary tumors (should be one)
-- Non-unique site IDs
+- Vague or imprecise anatomic locations
 - Metastases not properly nested
 - Non-standard molecular nomenclature
 - Missing critical Phase I relevant data (molecular profile, prior therapies)
@@ -391,7 +386,7 @@ CORRECTION_SYSTEM_PROMPT = """You are a precise editor fixing cancer extraction 
 - Fix cancer type classification
 - Correct tumor hierarchy (ensure proper nesting)
 - Standardize molecular nomenclature (e.g., "Her-2" → "HER2")
-- Fix unique IDs (e.g., "liver_met_1" appearing twice)
+- Make anatomic locations more precise (e.g., "liver" → "liver segment 6")
 - Correct status values to enum options
 - Preserve specific drug name formatting
 """
@@ -948,7 +943,6 @@ async def test_extract_patient_cancer():
     primary = cancer.primary_tumor
     assert primary.is_primary is True
     assert "lung" in primary.anatomic_location.lower()
-    assert primary.site_id.startswith("primary_")
 
     # Check metastases
     assert primary.metastases is not None

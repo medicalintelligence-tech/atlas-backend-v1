@@ -76,7 +76,7 @@ SYNTHETIC_GENERATION_SYSTEM_PROMPT = """You are a world-class synthetic medical 
   - Lung cancer → brain, bone, liver, adrenal
   - Breast cancer → bone, liver, lung, brain
   - Colorectal → liver, lung, peritoneum
-- Use unique, descriptive site_ids: "primary_lung_RUL", "liver_met_seg6", "brain_met_left_frontal"
+- Use precise anatomic locations: "right upper lobe lung", "liver segment 6", "left frontal brain", "L3 vertebra"
 - Not every metastatic site needs detailed molecular profiling
 
 ### 4. Disease Status Logic
@@ -251,9 +251,9 @@ async def test_generate_realistic_lung_cancer_patient():
     Generate a realistic stage IV lung adenocarcinoma patient:
     - EGFR exon 19 deletion
     - Brain and bone metastases
-    - Failed first-line osimertinib (developed T790M resistance)
-    - Currently on second-line chemotherapy
-    - Stable disease on current treatment
+    - Failed first-line osimertinib
+    - Now on platinum-based chemotherapy
+    - Include PD-L1 status and other relevant molecular markers
     """
 
     patient = await generate_synthetic_patient(prompt)
@@ -274,28 +274,46 @@ async def test_generate_realistic_lung_cancer_patient():
     assert primary.is_primary is True
     assert "lung" in primary.anatomic_location.lower()
 
-    # Verify metastases present
+    # Verify metastases present (requested brain and bone)
     assert primary.metastases is not None
-    assert len(primary.metastases) >= 2  # Brain and bone
+    assert len(primary.metastases) >= 2, "Should have multiple metastases"
 
+    # Check that we have brain and bone mets as requested
     met_locations = [m.anatomic_location.lower() for m in primary.metastases]
-    assert any("brain" in loc for loc in met_locations)
-    assert any("bone" in loc or "vertebra" in loc for loc in met_locations)
+    has_brain = any("brain" in loc or "cerebral" in loc for loc in met_locations)
+    has_bone = any(
+        "bone" in loc or "vertebra" in loc or "spine" in loc for loc in met_locations
+    )
 
-    # Verify molecular profile
+    assert has_brain, f"Should have brain metastasis. Found mets: {met_locations}"
+    assert has_bone, f"Should have bone metastasis. Found mets: {met_locations}"
+
+    # Verify molecular profile - should have EGFR exon 19 deletion
     assert primary.molecular_profile is not None
     profile = primary.molecular_profile
 
-    # Should have EGFR mutation
-    assert profile.mutations is not None
-    assert any("EGFR" in m for m in profile.mutations)
-    assert any("19" in m or "deletion" in m.lower() for m in profile.mutations)
+    # Check for EGFR mutation (requested exon 19 deletion)
+    assert profile.mutations is not None, "Should have mutations (EGFR requested)"
+    egfr_found = any("EGFR" in m.upper() for m in profile.mutations)
+    assert egfr_found, f"Should have EGFR mutation. Found: {profile.mutations}"
 
-    # Verify treatment history
+    # Check if exon 19 deletion is mentioned
+    exon_19 = any("19" in m or "deletion" in m.lower() for m in profile.mutations)
+    assert exon_19, f"Should have exon 19 deletion. Found: {profile.mutations}"
+
+    # Should have PD-L1 status (was requested)
+    assert profile.pdl1_expression is not None, "Should have PD-L1 status"
+
+    # Verify treatment history - should include osimertinib
     assert cancer.prior_therapy_lines is not None
-    assert cancer.prior_therapy_lines >= 1
+    assert cancer.prior_therapy_lines >= 1, "Should have prior therapy lines"
     assert cancer.prior_therapies is not None
-    assert any("osimertinib" in t.lower() for t in cancer.prior_therapies)
+
+    # Check for osimertinib (was requested as first-line)
+    has_osimertinib = any("osimertinib" in t.lower() for t in cancer.prior_therapies)
+    assert (
+        has_osimertinib
+    ), f"Should have osimertinib in prior therapies. Found: {cancer.prior_therapies}"
 
     # Verify disease status
     assert cancer.disease_status in [
@@ -315,7 +333,10 @@ async def test_generate_realistic_lung_cancer_patient():
     print(f"  Histology: {cancer.histology}")
     print(f"  Primary: {primary.anatomic_location}")
     print(f"  Metastases: {len(primary.metastases)}")
+    met_sites = [m.anatomic_location for m in primary.metastases]
+    print(f"  Met Sites: {', '.join(met_sites[:3])}")
     print(f"  Prior Lines: {cancer.prior_therapy_lines}")
+    print(f"  Prior Therapies: {', '.join(cancer.prior_therapies[:3])}")
     print(f"  Disease Status: {cancer.disease_status.value}")
     if profile.mutations:
         print(f"  Key Mutations: {', '.join(profile.mutations[:3])}")
