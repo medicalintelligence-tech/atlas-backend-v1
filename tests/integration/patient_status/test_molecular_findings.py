@@ -24,7 +24,7 @@
 # - Max 15 mutations per report (prioritize most clinically relevant)
 
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from typing import Optional, List, Union, Literal
 from datetime import date, datetime
 from enum import Enum
@@ -69,10 +69,16 @@ class FindingType(str, Enum):
 class MolecularFindingBase(BaseModel):
     """Base class for all molecular findings"""
 
+    model_config = ConfigDict(extra="forbid")
+
     finding_type: FindingType = Field(description="Type of finding (discriminator)")
     origin: Origin = Field(description="Somatic vs germline vs unknown")
     raw_text: str = Field(
         description="Raw text from report showing this finding", min_length=1
+    )
+    notes: Optional[str] = Field(
+        None,
+        description="Additional context (e.g., 'Region-level CNA', 'Gene-specific CNA')",
     )
 
 
@@ -180,6 +186,8 @@ MolecularFinding = Union[
 class TestReport(BaseModel):
     """A molecular/genomic test report with its findings"""
 
+    model_config = ConfigDict(extra="forbid")
+
     test_date: Optional[date] = Field(
         None, description="Date test was performed or reported"
     )
@@ -221,6 +229,8 @@ class TestReport(BaseModel):
 
 class MolecularFindingsExtraction(BaseModel):
     """Complete extraction of molecular/genomic findings from a document"""
+
+    model_config = ConfigDict(extra="forbid")
 
     reports: List[TestReport] = Field(
         description="All test reports extracted from the document (usually 1, but can be multiple if document references multiple historical tests)"
@@ -435,13 +445,22 @@ Extract:
 ## CNA Findings (Copy Number Alterations)
 
 Extract:
-- Gene: "MTAP", "MET", "EGFR", "FGFR1"
+- Gene: Gene name or chromosomal region
+  - If specific gene mentioned: Use HUGO nomenclature ("MTAP", "MET", "EGFR")
+  - If only chromosomal region mentioned: Use band notation ("11q13-q23", "17p", "5q")
+  - Add to notes: "Region-level CNA" or "Gene-specific CNA" or "From cytogenetics"
 - Alteration direction: "amplification", "deletion", "gain", "loss", "loss_of_heterozygosity"
 - Copy number (optional): 8.2
 - Origin: somatic/germline/unknown
 
+**Examples**:
+- Cytogenetics: "del(11)(q13q23)" → gene="11q13-q23", alteration_direction="deletion", notes="Region-level CNA from cytogenetics"
+- FISH: "KMT2A deletion" → gene="KMT2A", alteration_direction="deletion", notes="Gene-specific CNA by FISH"
+- NGS: "MTAP homozygous deletion" → gene="MTAP", alteration_direction="deletion", notes="Gene-specific CNA"
+
 **Normalization**:
 - Use canonical terms: "amplification" (not "amp"), "deletion" (not "del")
+- For regions: Use hyphen format "11q13-q23" (not parentheses)
 - Common CNAs: EGFR amplification, MET amplification, MTAP deletion, CDKN2A deletion
 
 ## EXPRESSION Findings (Biomarker Expression)
@@ -477,9 +496,14 @@ Extract:
 **CRITICAL**: Findings are grouped under TEST REPORTS. Each report has:
 - **test_date**: YYYY-MM-DD (when test was performed) (or null if not specified)
 - **test_name**: "Omniseq", "FoundationOne", "Guardant360", etc. (or null if not specified)
-- **test_methods**: List of test methods used (e.g., ["NGS", "IHC", "FISH", "PCR"]) - a single report can use multiple methods
-- **specimen_type**: "tissue", "blood", "plasma", etc. (or null)
-- **specimen_site**: Anatomical site/source (e.g., "lung", "liver metastasis", "primary tumor", "lymph node") (or null)
+- **test_methods**: List of test methods used (e.g., ["NGS", "IHC", "FISH", "PCR"]) - REQUIRED, a single report can use multiple methods
+- **specimen_type**: "tissue", "blood", "plasma", "bone marrow", etc. (or null)
+- **specimen_site**: Anatomical site/source - extract from phrases like:
+  - "Right upper lobe lung biopsy" → "right upper lobe, lung"
+  - "Bone marrow aspirate, posterior iliac crest" → "posterior iliac crest"
+  - "Liver metastasis" → "liver metastasis"
+  - "Primary tumor, colon" → "primary tumor, colon"
+  - Use null only if no site information in document
 - **findings**: List of all findings from this report
 
 Each report can have multiple findings. All findings from the same test report should be grouped together.
@@ -497,6 +521,7 @@ Every finding must have:
 - **finding_type**: variant/cna/expression/signature (determines which fields are valid)
 - **origin**: somatic/germline/unknown
 - **raw_text**: Exact excerpt from document showing this finding
+- **notes**: Optional additional context (e.g., "Region-level CNA", "Gene-specific CNA", "From cytogenetics")
 
 ## Negative Results
 
@@ -547,7 +572,6 @@ For SIGNATURE:
   Unit: [unit or null]
 
 Raw Text: "[excerpt from document]"
-Clinical Significance: [significance or null]
 Notes: [notes or null]
 
 ---
@@ -581,20 +605,39 @@ VALIDATION_SYSTEM_PROMPT = """You are a meticulous validator checking extracted 
 
 ## Validation Checks
 
-1. **Report Structure**: Are findings properly grouped under reports with report metadata (test_date, test_name, test_methods, specimen_type, specimen_site)?
-2. **Completeness**: Are all clinically significant findings captured?
-3. **Correct Classification**: Is each finding in the right category (variant/cna/expression/signature)?
-4. **Variant Constraints per report**:
+1. **Schema Compliance** (CRITICAL - check first):
+   - Are all fields in the markdown valid for the target Pydantic schema?
+   - No extra fields beyond: finding_type, origin, raw_text, notes, and type-specific fields
+   - Variant fields: gene, canonical_variant, protein_change, cdna_change, variant_frequency
+   - CNA fields: gene, alteration_direction, copy_number
+   - Expression fields: biomarker, intensity_score, score_scale, quantitative_value
+   - Signature fields: signature_type, status, quantitative_value, unit
+   - Report fields: test_date, test_name, test_methods (required list), specimen_type, specimen_site
+   - NO fields like: report_id, clinical_significance, etc.
+
+2. **Report Structure**: Are findings properly grouped under reports with report metadata?
+
+3. **Completeness**: Are all clinically significant findings captured?
+
+4. **Correct Classification**: Is each finding in the right category (variant/cna/expression/signature)?
+
+5. **Variant Constraints per report**:
    - Are there more than 15 variants in any single report? (FAIL if yes)
    - Are VUS mutations included? (FAIL if yes)
    - Are only pathogenic/likely pathogenic variants included? (PASS if yes)
-5. **Normalization**: Are genes, variants, biomarkers using standardized nomenclature?
-6. **Field Accuracy**: Do the type-specific fields match the finding type?
-7. **Format Compliance**: Does the markdown follow the expected nested structure?
-8. **Supporting Evidence**: Is raw_text present and relevant for each finding?
+
+6. **Normalization**: Are genes, variants, biomarkers using standardized nomenclature?
+
+7. **Field Accuracy**: Do the type-specific fields match the finding type?
+
+8. **Format Compliance**: Does the markdown follow the expected nested structure?
+
+9. **Supporting Evidence**: Is raw_text present and relevant for each finding?
 
 ## What to Flag
 
+- **Fields not in schema** (e.g., report_id, clinical_significance) - FAIL
+- Wrong field types (e.g., test_methods as string instead of list)
 - Missing report metadata (test_methods is required)
 - Findings not properly nested under a report
 - VUS mutations included (should be excluded)
@@ -771,7 +814,7 @@ async def extract_to_pydantic(markdown: str, model) -> MolecularFindingsExtracti
     extraction_agent = Agent(
         model=model,
         output_type=MolecularFindingsExtraction,
-        system_prompt="You are a precise data parser. Convert the provided markdown representation of molecular findings into the structured MolecularFindingsExtraction model. The markdown has a nested structure where findings are grouped under reports. Each report has metadata (test_date, test_name, test_methods, specimen_type, specimen_site) and a list of findings. Note that test_methods is a list of strings. Use the finding_type field to determine which specific finding model to use (VariantFinding, CNAFinding, ExpressionFinding, or SignatureFinding). Preserve all information accurately.",
+        system_prompt="You are a precise data parser. Convert the provided markdown representation of molecular findings into the structured MolecularFindingsExtraction model. The markdown has a nested structure where findings are grouped under reports. Each report has metadata (test_date, test_name, test_methods, specimen_type, specimen_site) and a list of findings. Note that test_methods is a list of strings. All findings have shared fields (finding_type, origin, raw_text, notes). Use the finding_type field to determine which specific finding model to use (VariantFinding, CNAFinding, ExpressionFinding, or SignatureFinding). CRITICAL: The models have strict validation (extra='forbid') - only include fields that are defined in the schema. Preserve all information accurately.",
     )
 
     prompt = f"""
@@ -780,13 +823,13 @@ async def extract_to_pydantic(markdown: str, model) -> MolecularFindingsExtracti
     Structure:
     - MolecularFindingsExtraction has a list of TestReport objects
     - Each TestReport has metadata (test_date, test_name, test_methods, specimen_type, specimen_site) and a list of findings
-    - Each finding is one of four types based on finding_type:
-      - variant → VariantFinding (with gene, canonical_variant, etc.)
-      - cna → CNAFinding (with gene, alteration_direction, etc.)
-      - expression → ExpressionFinding (with biomarker, intensity_score, etc.)
-      - signature → SignatureFinding (with signature_type, status, etc.)
+    - Each finding has shared fields (finding_type, origin, raw_text, notes) and is one of four types based on finding_type:
+      - variant → VariantFinding (with gene, canonical_variant, protein_change, cdna_change, variant_frequency)
+      - cna → CNAFinding (with gene, alteration_direction, copy_number)
+      - expression → ExpressionFinding (with biomarker, intensity_score, score_scale, quantitative_value)
+      - signature → SignatureFinding (with signature_type, status, quantitative_value, unit)
     
-    Use the discriminated union pattern to parse each finding into the correct type.
+    IMPORTANT: Models use ConfigDict(extra='forbid') - only include fields that exist in the schema. Do not add any extra fields.
 
     {markdown}
     """
