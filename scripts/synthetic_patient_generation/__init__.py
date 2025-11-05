@@ -1,0 +1,2 @@
+# Synthetic patient generation scripts
+

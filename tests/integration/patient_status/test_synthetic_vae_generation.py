@@ -18,8 +18,8 @@ from pydantic_ai.providers.openai import OpenAIProvider
 from config.settings import settings
 import pytest
 
-# Import the models from test_vae_structure
-from tests.integration.patient_status.test_vae_structure import (
+# Import the models from schemas
+from src.schemas.v1_vae_patient_extraction import (
     PatientCancerExtraction,
     SolidCancer,
     BloodCancer,
