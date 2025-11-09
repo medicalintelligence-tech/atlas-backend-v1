@@ -10,7 +10,7 @@ from typing import Optional, List, Union
 from datetime import date, datetime
 from enum import Enum
 from dataclasses import dataclass, field as dataclass_field, asdict
-from pydantic_ai import Agent, RunContext, PromptedOutput
+from pydantic_ai import Agent, RunContext, PromptedOutput, RunUsage
 from pydantic_ai.models.anthropic import AnthropicModel, AnthropicModelSettings
 from pydantic_ai.providers.anthropic import AnthropicProvider
 from pydantic_ai.models.openai import OpenAIResponsesModel, OpenAIResponsesModelSettings
@@ -418,6 +418,9 @@ class ValidationState:
     validation_history: List[ValidationAttempt] = dataclass_field(default_factory=list)
     tool_call_history: List[ToolCallApplication] = dataclass_field(default_factory=list)
 
+    # Usage tracking
+    usage: RunUsage = dataclass_field(default_factory=RunUsage)
+
     def add_validation_attempt(self, is_valid: bool, feedback: Optional[str] = None):
         """Record a validation attempt"""
         attempt = ValidationAttempt(
@@ -759,7 +762,7 @@ def get_default_model() -> ModelConfig:
     return get_anthropic_model()
 
 
-def get_anthropic_model(enable_thinking: bool = True) -> ModelConfig:
+def get_anthropic_model(enable_thinking: bool = False) -> ModelConfig:
     """
     Get Anthropic Claude model configuration
 
@@ -782,7 +785,7 @@ def get_anthropic_model(enable_thinking: bool = True) -> ModelConfig:
         model_settings = AnthropicModelSettings(max_tokens=25000)
 
     model = AnthropicModel(
-        "claude-sonnet-4-5",
+        "claude-haiku-4-5",
         provider=AnthropicProvider(api_key=settings.anthropic_api_key),
         settings=model_settings,
     )
@@ -886,6 +889,39 @@ def create_correction_agent(model_config: ModelConfig) -> Agent:
 # ============================================================================
 
 
+def display_usage(usage: RunUsage, label: str = "Usage") -> None:
+    """Display formatted usage information"""
+    total = (
+        usage.input_tokens
+        + usage.output_tokens
+        + usage.cache_write_tokens
+        + usage.cache_read_tokens
+    )
+    print(f"\n{'='*60}")
+    print(f"📊 {label}")
+    print(f"{'='*60}")
+    print(f"  Requests:              {usage.requests}")
+    print(f"  Tool Calls:            {usage.tool_calls}")
+    print(f"  Input Tokens:          {usage.input_tokens:,}")
+    print(f"  Output Tokens:         {usage.output_tokens:,}")
+    print(f"  Cache Write Tokens:    {usage.cache_write_tokens:,}")
+    print(f"  Cache Read Tokens:     {usage.cache_read_tokens:,}")
+    print(f"  Total Tokens:          {total:,}")
+    print(f"{'='*60}")
+
+
+def calculate_usage_delta(current: RunUsage, previous: RunUsage) -> RunUsage:
+    """Calculate the difference between two RunUsage objects"""
+    delta = RunUsage()
+    delta.requests = current.requests - previous.requests
+    delta.tool_calls = current.tool_calls - previous.tool_calls
+    delta.input_tokens = current.input_tokens - previous.input_tokens
+    delta.output_tokens = current.output_tokens - previous.output_tokens
+    delta.cache_write_tokens = current.cache_write_tokens - previous.cache_write_tokens
+    delta.cache_read_tokens = current.cache_read_tokens - previous.cache_read_tokens
+    return delta
+
+
 def apply_corrections(
     markdown: str, operations: List[SearchReplaceOperation]
 ) -> tuple[str, list[bool]]:
@@ -912,9 +948,13 @@ def apply_corrections(
 
 
 async def extract_to_pydantic(
-    markdown: str, model_config: ModelConfig
-) -> DiagnosisExtraction:
-    """Convert validated markdown to Pydantic model"""
+    markdown: str, model_config: ModelConfig, usage: RunUsage, previous_usage: RunUsage
+) -> tuple[DiagnosisExtraction, RunUsage]:
+    """Convert validated markdown to Pydantic model
+
+    Returns:
+        Tuple of (extracted_diagnosis, updated_previous_usage)
+    """
     extraction_agent = Agent(
         model=model_config.model,
         output_type=wrap_output_type(
@@ -935,9 +975,14 @@ async def extract_to_pydantic(
     """
 
     print("\n🔄 Converting markdown to Pydantic model...")
-    async with extraction_agent.run_stream(prompt) as result:
+    async with extraction_agent.run_stream(prompt, usage=usage) as result:
         output = await result.get_output()
-    return output
+
+    # Display usage for this step (delta)
+    step_usage = calculate_usage_delta(result.usage(), previous_usage)
+    display_usage(step_usage, "Step 3: Pydantic Conversion Usage")
+
+    return output, result.usage()
 
 
 # ============================================================================
@@ -963,6 +1008,9 @@ async def extract_diagnosis_async(
     """
     model_config = get_default_model()
 
+    # Initialize usage tracking
+    total_usage = RunUsage()
+
     print("=" * 80)
     print("🚀 Starting Diagnosis Data Extraction")
     print(f"Model: {model_config.model.__class__.__name__}")
@@ -976,10 +1024,19 @@ async def extract_diagnosis_async(
     print("-" * 60)
 
     extraction_agent = create_extraction_agent(model_config)
+    previous_usage = RunUsage()  # Start with empty usage to calculate first delta
+
     async with extraction_agent.run_stream(
-        f"Extract diagnosis information from this medical document:\n\n{document}"
+        f"Extract diagnosis information from this medical document:\n\n{document}",
+        usage=total_usage,
     ) as result:
         output = await result.get_output()
+
+    # Display usage for initial extraction (delta)
+    step_usage = calculate_usage_delta(result.usage(), previous_usage)
+    display_usage(step_usage, "Step 1: Initial Extraction Usage")
+    previous_usage = result.usage()  # Update for next delta calculation
+
     initial_markdown = output.markdown.strip()
 
     # Clean up any markdown formatting
@@ -1000,6 +1057,7 @@ async def extract_diagnosis_async(
         initial_markdown=initial_markdown,
         current_markdown=initial_markdown,
         max_iterations=max_iterations,
+        usage=total_usage,
     )
 
     print(f"\n🔄 Step 2: Starting validation loop (max {max_iterations} iterations)")
@@ -1026,9 +1084,14 @@ async def extract_diagnosis_async(
 
         print("🔍 Validating markdown...")
         async with validation_agent.run_stream(
-            validation_prompt, deps=state
+            validation_prompt, deps=state, usage=total_usage
         ) as validation_result:
             validation_output = await validation_result.get_output()
+
+        # Display usage for this validation step (delta)
+        step_usage = calculate_usage_delta(validation_result.usage(), previous_usage)
+        display_usage(step_usage, f"Iteration {iteration + 1}: Validation Usage")
+        previous_usage = validation_result.usage()
 
         # Record validation attempt
         state.add_validation_attempt(
@@ -1057,10 +1120,15 @@ async def extract_diagnosis_async(
 
         print("\n🔧 Generating corrections...")
         async with correction_agent.run_stream(
-            correction_prompt, deps=state
+            correction_prompt, deps=state, usage=total_usage
         ) as correction_result:
             correction_output = await correction_result.get_output()
         operations = correction_output.operations
+
+        # Display usage for this correction step (delta)
+        step_usage = calculate_usage_delta(correction_result.usage(), previous_usage)
+        display_usage(step_usage, f"Iteration {iteration + 1}: Correction Usage")
+        previous_usage = correction_result.usage()
 
         print(f"📝 Generated {len(operations)} correction operations")
         print(correction_output.model_dump_json(indent=2))
@@ -1104,9 +1172,14 @@ async def extract_diagnosis_async(
     print("\n📦 Step 3: Converting to Pydantic model...")
     print("-" * 60)
 
-    extraction = await extract_to_pydantic(state.current_markdown, model_config)
+    extraction, previous_usage = await extract_to_pydantic(
+        state.current_markdown, model_config, total_usage, previous_usage
+    )
 
     print("✅ Successfully extracted diagnosis data")
+
+    # Display total workflow usage
+    display_usage(total_usage, "🎯 TOTAL WORKFLOW USAGE")
 
     result = ExtractionResult(
         success=True,

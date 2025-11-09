@@ -740,7 +740,7 @@ def get_default_model() -> ModelConfig:
     return get_anthropic_model()
 
 
-def get_anthropic_model(enable_thinking: bool = True) -> ModelConfig:
+def get_anthropic_model(enable_thinking: bool = False) -> ModelConfig:
     """
     Get Anthropic Claude model configuration
 
