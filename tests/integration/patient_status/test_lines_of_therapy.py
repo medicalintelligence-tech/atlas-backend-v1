@@ -121,6 +121,7 @@ class DrugClassEnum(str, Enum):
     IMMUNOTHERAPY = "immunotherapy"
     HORMONAL_THERAPY = "hormonal_therapy"
     RADIOPHARMACEUTICAL = "radiopharmaceutical"
+    INVESTIGATIONAL = "investigational"
 
 
 class AdministrationRouteEnum(str, Enum):
@@ -189,7 +190,8 @@ class LineOfTherapy(BaseModel):
     )
 
     reason_for_change: Optional[str] = Field(
-        None, description="Why therapy was stopped or changed"
+        None,
+        description="Why THIS line of therapy ended or was changed from its original plan (e.g., 'disease progression', 'unacceptable toxicity', 'completed planned course'). Leave null if therapy is ongoing or reason is unknown.",
     )
 
     concurrent_radiation: Optional[bool] = Field(
@@ -423,11 +425,12 @@ class ExtractionResult(BaseModel):
 # SYSTEM PROMPTS
 # ============================================================================
 
-EXTRACTION_SYSTEM_PROMPT = """You are an expert medical data extraction specialist. Your task is to extract lines of systemic anti-cancer therapy from medical progress notes and represent them in a structured markdown format.
+EXTRACTION_SYSTEM_PROMPT = """You are a world-class medical oncologist and expert medical data extraction specialist. Your task is to extract lines of systemic anti-cancer therapy from medical progress notes and represent them in a structured markdown format. Apply your deep clinical knowledge of oncology to make nuanced distinctions about disease staging, treatment intent, and therapy classifications.
 
 ## What Counts as a Line of Therapy
 
 Include all systemic anti-cancer therapies:
+- **Treatment must have been INITIATED** (first dose administered or first medication dispensed). Do not extract planned, recommended, or discussed future treatments that have not yet started.
 - IV/oral chemotherapy (FOLFOX, carboplatin/paclitaxel, capecitabine, etc.)
 - Targeted therapies any route (osimertinib, palbociclib, trastuzumab, bevacizumab)
 - Immunotherapy (pembrolizumab, nivolumab, ipilimumab)
@@ -477,11 +480,29 @@ Examples:
 - "SBRT 54Gy/3fx to liver with capecitabine" → concurrent_radiation: True, concurrent_radiation_details: "SBRT 54Gy in 3 fractions to liver"
 - "whole brain radiation with concurrent temozolomide" → concurrent_radiation: True, concurrent_radiation_details: "Whole brain radiation"
 
+## Treatment Initiation Language
+
+Treatment STARTED (extract):
+- "started on", "initiated", "received first dose", "C1D1", "began treatment"
+- "continues on", "tolerating well", "dose #X received"
+- "completed", "discontinued after X cycles"
+
+Treatment PLANNED (do not extract):
+- "will start", "plan to initiate", "recommend", "discussed starting"
+- "pending biopsy confirmation", "scheduled to begin"
+- "next line will be", "offered treatment with"
+
+If treatment status is ambiguous, check: Has the document date passed the stated/implied start date? Has any actual administration been documented?
+
 ## Key Principles
 
 Dates: Use YYYY-MM-DD format. If only month/year given, use first of month (June 2023 = 2023-06-01). Calculate relative dates from note date. Always provide best estimate.
 
 End dates: Must be null if therapy is currently ongoing. Only provide when therapy explicitly stopped or changed.
+
+Current status: ongoing (currently receiving), completed (finished planned course), discontinued (stopped early due to progression/toxicity/other reason), null (cannot determine)
+
+Reason for change: Why this line ended (e.g., progression, toxicity, completed course), not why it started. Null if ongoing or unknown.
 
 Disease setting:
 - non-metastatic: Early stage, no distant mets
@@ -502,7 +523,16 @@ Drug classification:
 - immunotherapy: Checkpoint inhibitors
 - hormonal_therapy: Endocrine agents
 - radiopharmaceutical: Radioactive therapeutic agents
+- investigational: Drugs in clinical trials, experimental agents, or agents not yet FDA-approved (use for phase I/II trials or when mechanism/class is unclear)
 - null: Only use if truly cannot be determined from context
+
+## Clinical Trial Documentation
+
+For investigational agents in clinical trials:
+- Use the study drug code/name as it appears in documentation (e.g., "GDC-6036", "ABC-123", "study drug XYZ")
+- Set drug_class to "investigational" unless the specific class is clearly stated (e.g., "investigational KRAS inhibitor" → targeted_therapy)
+- Document trial details in notes field: trial identifier (NCT number), phase, dose level/cohort
+- Regimen name can include "investigational" descriptor (e.g., "investigational KRAS G12C inhibitor", "GDC-6036")
 
 ## Drug Name Standardization
 
@@ -616,6 +646,12 @@ VALIDATION_SYSTEM_PROMPT = """You are a meticulous validator checking extracted 
 5. **Supporting Evidence**: Are there relevant excerpts that justify the extraction?
 6. **Confidence Appropriateness**: Does the confidence score reflect the clarity of information?
 7. **Radiation Handling**: Is concurrent radiation documented in the "Concurrent Radiation" and "Concurrent Radiation Details" fields, NOT as a drug entry?
+8. **Status Accuracy**: Is the status (ongoing/completed/discontinued) correct?
+   - completed = finished as planned
+   - discontinued = stopped early due to progression, toxicity, or other reason
+9. **Reason for Change Logic**: Does "Reason for Change" explain why THIS line ENDED (not why it started)?
+   - Should describe progression, toxicity, completion, etc.
+   - Should NOT describe why the line was chosen or started
 
 ## What to Flag
 
@@ -1037,7 +1073,7 @@ async def test_extract_lines_of_therapy_sample_001():
         or "pembrolizumab" in line1.regimen_name.lower()
         or "Keytruda" in line1.regimen_name
     )
-    assert line1.disease_setting == DiseaseSettingEnum.NON_METASTATIC
+    assert line1.disease_setting == DiseaseSettingEnum.LOCALLY_ADVANCED
     assert line1.treatment_intent == TreatmentIntentEnum.NEOADJUVANT
     assert line1.current_status == CurrentStatusEnum.COMPLETED
     assert line1.end_date is not None
@@ -1052,7 +1088,7 @@ async def test_extract_lines_of_therapy_sample_001():
         or "pembrolizumab" in line2.regimen_name.lower()
         or "Keytruda" in line2.regimen_name
     )
-    assert line2.disease_setting == DiseaseSettingEnum.NON_METASTATIC
+    assert line2.disease_setting == DiseaseSettingEnum.LOCALLY_ADVANCED
     assert line2.treatment_intent == TreatmentIntentEnum.CURATIVE
     assert line2.current_status == CurrentStatusEnum.ONGOING
     assert line2.end_date is None  # Should be ongoing
@@ -1137,8 +1173,8 @@ async def test_extract_lines_of_therapy_sample_002():
     ), f"Regimen should include pembrolizumab/keytruda: {line1.regimen_name}"
 
     assert (
-        line1.disease_setting == DiseaseSettingEnum.NON_METASTATIC
-    ), "Line 1 disease setting should be non-metastatic (initially Stage 2A)"
+        line1.disease_setting == DiseaseSettingEnum.LOCALLY_ADVANCED
+    ), "Line 1 disease setting should be locally-advanced (4cm hilar mass invading hilum, requiring pneumonectomy)"
     assert (
         line1.treatment_intent == TreatmentIntentEnum.NEOADJUVANT
     ), "Line 1 intent should be neoadjuvant"
@@ -1174,11 +1210,11 @@ async def test_extract_lines_of_therapy_sample_002():
         drug in regimen_lower2 for drug in ["pembrolizumab", "keytruda"]
     ), f"Line 2 regimen should include pembrolizumab/keytruda: {line2.regimen_name}"
 
-    # Disease setting should still be non-metastatic during consolidation
-    # (metastatic disease discovered later on 5/25/25 PET)
+    # Disease setting should be locally-advanced during consolidation
+    # (large hilar mass treated with definitive chemoradiation; metastatic disease discovered later on 5/25/25 PET)
     assert (
-        line2.disease_setting == DiseaseSettingEnum.NON_METASTATIC
-    ), "Line 2 initially in non-metastatic setting (mets discovered later)"
+        line2.disease_setting == DiseaseSettingEnum.LOCALLY_ADVANCED
+    ), "Line 2 disease setting should be locally-advanced (definitive chemoradiation for extensive hilar disease)"
 
     # Treatment intent could be curative or consolidative
     assert line2.treatment_intent in [
