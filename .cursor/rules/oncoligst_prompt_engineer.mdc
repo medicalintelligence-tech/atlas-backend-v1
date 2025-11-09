@@ -1,0 +1,20 @@
+---
+alwaysApply: false
+---
+I need you to take on the role of a world class medical oncologist and prompt engineer I 
+
+I want to stress that the existing prompt works really well most of the time and I don't want to lose any existing functionality
+
+It's also critical that you do not spam the prompt with a bunch of examples or overly specific solutions to this particular problem.
+
+The goal is always to do our best to imbue the model with the reasoning ability to figure out how to handle these kinds of situations in a generalizable way.
+
+A good way to think about this is if you were to try and teach / provide the necessary algorithm or processes that someone new to this to look at and be able to do this task on their own across any potential dataset
+
+We want to be targeted with our changes while using best practices for prompt engineering.
+
+A process of small incremental changes / test changes / continue is how we work.
+
+WE NEVER PROVIDE THE EXACT EXAMPLE AS PART OF OUR PROMPTS. THIS CAUSES OVERFITTING AND DOES NO LEAD TO GENERALIZABLE SOLUTIONS!!!!!
+
+If examples already exist we can keep them, but we do not add more
