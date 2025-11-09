@@ -720,7 +720,7 @@ CORRECTION_SYSTEM_PROMPT = """You are a precise editor. Given validation feedbac
 
 def get_default_model():
     """Get default model configuration (defaults to OpenAI)"""
-    return get_openai_model()
+    return get_anthropic_model()
 
 
 def get_anthropic_model():
@@ -865,8 +865,9 @@ async def extract_to_pydantic(markdown: str, model) -> DiagnosisExtraction:
     """
 
     print("\n🔄 Converting markdown to Pydantic model...")
-    result = await extraction_agent.run(prompt)
-    return result.output
+    async with extraction_agent.run_stream(prompt) as result:
+        output = await result.get_output()
+    return output
 
 
 # ============================================================================
@@ -901,10 +902,11 @@ async def extract_diagnosis_async(
     print("-" * 60)
 
     extraction_agent = create_extraction_agent(model)
-    result = await extraction_agent.run(
+    async with extraction_agent.run_stream(
         f"Extract diagnosis information from this medical document:\n\n{document}"
-    )
-    initial_markdown = result.output.markdown.strip()
+    ) as result:
+        output = await result.get_output()
+    initial_markdown = output.markdown.strip()
 
     # Clean up any markdown formatting
     if "```markdown" in initial_markdown:
@@ -949,8 +951,10 @@ async def extract_diagnosis_async(
         """
 
         print("🔍 Validating markdown...")
-        validation_result = await validation_agent.run(validation_prompt, deps=state)
-        validation_output = validation_result.output
+        async with validation_agent.run_stream(
+            validation_prompt, deps=state
+        ) as validation_result:
+            validation_output = await validation_result.get_output()
 
         # Record validation attempt
         state.add_validation_attempt(
@@ -978,11 +982,14 @@ async def extract_diagnosis_async(
         """
 
         print("\n🔧 Generating corrections...")
-        correction_result = await correction_agent.run(correction_prompt, deps=state)
-        operations = correction_result.output.operations
+        async with correction_agent.run_stream(
+            correction_prompt, deps=state
+        ) as correction_result:
+            correction_output = await correction_result.get_output()
+        operations = correction_output.operations
 
         print(f"📝 Generated {len(operations)} correction operations")
-        print(correction_result.output.model_dump_json(indent=2))
+        print(correction_output.model_dump_json(indent=2))
 
         # Apply corrections
         print("\n⚙️  Applying corrections...")
