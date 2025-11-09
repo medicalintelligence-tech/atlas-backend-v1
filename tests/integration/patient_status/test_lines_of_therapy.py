@@ -738,25 +738,27 @@ def create_correction_agent(model) -> Agent:
 
 def apply_corrections(
     markdown: str, operations: List[SearchReplaceOperation]
-) -> tuple[str, int]:
+) -> tuple[str, list[bool]]:
     """
     Apply search and replace operations to markdown
 
     Returns:
-        Tuple of (modified_markdown, successful_operations_count)
+        Tuple of (modified_markdown, list_of_success_flags)
+        where success_flags[i] indicates whether operations[i] succeeded
     """
-    successful_operations = 0
+    success_flags = []
     current_markdown = markdown
 
     for op in operations:
         if op.old_string in current_markdown:
             print(f"  ✓ Applying: {op.reason}")
             current_markdown = current_markdown.replace(op.old_string, op.new_string, 1)
-            successful_operations += 1
+            success_flags.append(True)
         else:
             print(f"  ✗ Could not find text to replace: {repr(op.old_string[:100])}")
+            success_flags.append(False)
 
-    return current_markdown, successful_operations
+    return current_markdown, success_flags
 
 
 async def extract_to_pydantic(markdown: str, model) -> LinesOfTherapyExtraction:
@@ -895,16 +897,16 @@ async def extract_lines_of_therapy_async(
 
         # Apply corrections
         print("\n⚙️  Applying corrections...")
-        state.current_markdown, successful_ops = apply_corrections(
+        state.current_markdown, success_flags = apply_corrections(
             state.current_markdown, operations
         )
 
-        # Record tool calls
-        for op in operations:
-            success = op.old_string in initial_markdown or successful_ops > 0
+        # Record tool calls with correct success tracking
+        for op, success in zip(operations, success_flags):
             state.add_tool_call(op.old_string, op.new_string, success)
 
-        print(f"✅ Applied {successful_ops}/{len(operations)} operations")
+        successful_count = sum(success_flags)
+        print(f"✅ Applied {successful_count}/{len(operations)} operations")
 
         print(f"\n📄 Markdown after iteration {iteration + 1}:")
         print("-" * 40)
