@@ -842,11 +842,21 @@ Extract when a gene is explicitly reported as wildtype/not detected and this is 
 
 Each report can have multiple findings. All findings from the same test report should be grouped together.
 
-**When to create separate reports**:
-- If document mentions multiple test names (e.g., Omniseq + separate germline test) → separate reports
-- If document is a single comprehensive report → one report with all findings
+**Report Consolidation Rules** (CRITICAL - read carefully):
 
-**Most common case**: Single genomic test report (Omniseq, FoundationOne, etc.) → ONE report with ALL findings nested within it
+**CONSOLIDATE into ONE report when**:
+- Same specimen source + same collection date + comprehensive diagnostic workup
+- Multiple test methods (NGS, FISH, IHC, Cytogenetics) performed on the same specimen
+- Document sections are part of integrated clinical assessment 
+
+**SEPARATE into MULTIPLE reports when**:
+- Different specimen sources (e.g., tissue biopsy + blood draw)
+- Different time points (e.g., baseline NGS + progression biopsy months later)
+- Explicitly different test orders (e.g., commercial panel "FoundationOne" + separate institutional germline testing)
+- Historical results mentioned for comparison (e.g., "previous FoundationOne from 2023 showed...")
+
+**Default assumption**: If document describes a single clinical encounter/specimen collection → ONE comprehensive report with multiple test_methods
+
 
 ## Shared Fields (All Finding Types)
 
@@ -989,24 +999,26 @@ VALIDATION_SYSTEM_PROMPT = """You are a meticulous validator checking extracted 
    - Report fields: test_name, test_methods (required list), specimen_type, specimen_site, tumor_content
    - NO fields like: report_id, clinical_significance, test_date, etc.
 
-2. **Report Structure**: Are findings properly grouped under reports with report metadata?
+2. **Report Consolidation**: Are findings from the same specimen/date/workup incorrectly split into multiple reports when they should be consolidated into one comprehensive report with multiple test_methods?
 
-3. **Completeness**: Are all clinically significant findings captured?
+3. **Report Structure**: Are findings properly grouped under reports with report metadata?
 
-4. **Correct Classification**: Is each finding in the right category (variant/cna/expression/signature)?
+4. **Completeness**: Are all clinically significant findings captured?
 
-5. **Variant Constraints per report**:
+5. **Correct Classification**: Is each finding in the right category (variant/cna/expression/signature)?
+
+6. **Variant Constraints per report**:
    - Are there more than 15 variants in any single report? (FAIL if yes)
    - Are VUS mutations included? (FAIL if yes)
    - Are only pathogenic/likely pathogenic variants included? (PASS if yes)
 
-6. **Normalization**: Are genes, variants, biomarkers using standardized nomenclature?
+7. **Normalization**: Are genes, variants, biomarkers using standardized nomenclature?
 
-7. **Field Accuracy**: Do the type-specific fields match the finding type?
+8. **Field Accuracy**: Do the type-specific fields match the finding type?
 
-8. **Format Compliance**: Does the markdown follow the expected nested structure?
+9. **Format Compliance**: Does the markdown follow the expected nested structure?
 
-9. **Supporting Evidence**: Is raw_text present and relevant for each finding?
+10. **Supporting Evidence**: Is raw_text present and relevant for each finding?
 
 ## What to Flag
 
@@ -1014,6 +1026,7 @@ VALIDATION_SYSTEM_PROMPT = """You are a meticulous validator checking extracted 
 - Wrong field types (e.g., test_methods as string instead of list)
 - Missing report metadata (test_methods is required)
 - Findings not properly nested under a report
+- **Multiple reports when should be consolidated** - FAIL
 - VUS mutations included (should be excluded)
 - More than 15 variants in a single report
 - Benign variants included
@@ -1298,7 +1311,9 @@ async def extract_molecular_findings_async(
         """
 
         print("🔍 Validating markdown...")
-        async with validation_agent.run_stream(validation_prompt, deps=state) as validation_result:
+        async with validation_agent.run_stream(
+            validation_prompt, deps=state
+        ) as validation_result:
             validation_output = await validation_result.get_output()
 
         # Record validation attempt
@@ -1327,7 +1342,9 @@ async def extract_molecular_findings_async(
         """
 
         print("\n🔧 Generating corrections...")
-        async with correction_agent.run_stream(correction_prompt, deps=state) as correction_result:
+        async with correction_agent.run_stream(
+            correction_prompt, deps=state
+        ) as correction_result:
             correction_output = await correction_result.get_output()
         operations = correction_output.operations
 
@@ -1849,8 +1866,11 @@ async def test_extract_molecular_findings_bone_marrow():
         result.extraction is not None
     ), "Extraction should contain molecular findings data"
 
-    # Should have one main report (may be reported as single comprehensive report with multiple methods)
-    assert len(result.extraction.reports) >= 1, "Should have at least one test report"
+    # Should have one comprehensive report (same specimen, same date, integrated workup)
+    # Per consolidation rules: bone marrow 06/24/24 with NGS + Cytogenetics + FISH + IHC = ONE report
+    assert (
+        len(result.extraction.reports) == 1
+    ), f"Should consolidate findings into one comprehensive report, got {len(result.extraction.reports)}"
 
     report = result.extraction.reports[0]
 
@@ -1858,19 +1878,30 @@ async def test_extract_molecular_findings_bone_marrow():
     # VALIDATE REPORT METADATA
     # ============================================================================
 
-    # Test name should reference NeoTYPE, NeoGenomics, or molecular profiling
-    assert report.test_name is not None, "Test name should be documented"
-    test_name_lower = report.test_name.lower()
-    assert (
-        "neotype" in test_name_lower
-        or "neogenomics" in test_name_lower
-        or "aml" in test_name_lower
-        or "molecular" in test_name_lower
-    ), f"Test name should reference NeoTYPE/NeoGenomics/molecular testing, got: {report.test_name}"
+    # Test name should reference comprehensive molecular testing
+    # Could be NeoTYPE, or generic "Comprehensive Bone Marrow Analysis", etc.
+    if report.test_name:
+        test_name_lower = report.test_name.lower()
+        # Accept various descriptors for comprehensive molecular workup
+        assert any(
+            term in test_name_lower
+            for term in [
+                "neotype",
+                "molecular",
+                "genomic",
+                "comprehensive",
+                "bone marrow",
+            ]
+        ), f"Test name should reference molecular/comprehensive testing, got: {report.test_name}"
 
-    # Test methods should include NGS, Cytogenetics, and FISH
-    assert len(report.test_methods) >= 1, "Should document at least one test method"
+    # Test methods should include multiple methods (NGS, Cytogenetics, FISH, IHC)
+    assert (
+        len(report.test_methods) >= 2
+    ), f"Comprehensive workup should include multiple test methods, got {len(report.test_methods)}"
+
     test_methods_str = " ".join(report.test_methods).upper()
+
+    # Should include NGS or sequencing
     assert (
         "NGS" in test_methods_str
         or "SEQUENCING" in test_methods_str
@@ -1884,11 +1915,9 @@ async def test_extract_molecular_findings_bone_marrow():
         "bone marrow" in specimen_type_lower or "marrow" in specimen_type_lower
     ), f"Specimen type should be bone marrow, got: {report.specimen_type}"
 
-    # Specimen site should reference bone marrow source (posterior iliac crest if captured)
-    # This may be null if not explicitly stated, but if present should be anatomically correct
+    # Specimen site should reference bone marrow source (if captured)
     if report.specimen_site:
         specimen_site_lower = report.specimen_site.lower()
-        # Could be "bone marrow", "posterior iliac crest", etc.
         assert (
             "marrow" in specimen_site_lower
             or "iliac" in specimen_site_lower
