@@ -1320,3 +1320,21 @@ async def test_extract_diagnosis_sample_002():
     print(f"Status: {diagnosis.status.value if diagnosis.status else 'Not documented'}")
     print(f"Confidence: {diagnosis.confidence_score}")
     print("=" * 80)
+
+
+# TODO
+# - setup 2 more evals for this (2 other progress notes)
+# - setup 1 eval for lines of therapy (can use these same notes)
+# - setup 1 eval for molecular findings (need docs for that but should already have some)
+
+
+# - find a trial and use it to generate queries against this data
+
+# - if it seems promising try this for 10 patients and see what you get
+# -- diagnosis and lines of therapy you can do with the progress note )
+# -- genomics you can do document by document for a single patient across multiple (need to give ability to return none if no relevant data is present / same for lines of therapy, aleready included in diagnosis data)
+
+# Plan
+# - setup 1 eval for lines of therapy
+# - setup 1 eval for molecular profile
+# - setup pipeline to try and do this for 10 patients and if it looks promising then do for a lot more

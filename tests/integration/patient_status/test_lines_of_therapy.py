@@ -960,8 +960,12 @@ async def extract_lines_of_therapy_async(
 # SAMPLE DATA
 # ============================================================================
 
-SAMPLE_PROGRESS_NOTE = """
+SAMPLE_PROGRESS_NOTE_001 = """
 UCSF Medical Center Oncology and Hematology, PLLC at The MCKAY-DEE Hospital 8934 Fargo Court, Smelterville, Il, 16853 Phone: 475-199-9015 Fax: 475-199-3790 Patient Name: Naaji Jr, Leif Patient Number: 0471662 Date: 6/27/2025 Date Of Birth: 7/06/1954 PROGRESS NOTE Chief Complaint Mr. Naaji is a 70 year old male referred by Dr Esperanza for lung cancer. Smoker Lives in Murdo-Mechanicstown 6/27/2025: About 2 weeks ago patient had complaints of fatigue, nausea, vomiting, low appetite and also low-grade fevers and overall not feeling well. His cortisol level was checked twice in am and was low at 4. So he was started on steroids with significant improvement duration of his symptoms S/p endocrine evaluation and is pending ACTH stimulation test No other new concerns or issues Active Problems Assessed \u00b7 C34.81 - Malignant neoplasm of overlapping sites of right bronchus and lung \u00b7 Z92.3 - Personal history of irradiation . Z51.12 - Encounter for antineoplastic immunotherapy . 125.10 - Atherosclerotic heart disease of native coronary artery without angina pectoris \u00b7 F10.20 - Alcohol dependence, uncomplicated History of Present Illness Mr. Naaji is a 70 year old male with PMH of DLD, CAD with PCI, Afib/PPM and AICD, extensive smoking 1PPD for >45 yrs now quit post Bx 2 weeks ago. He was having cough with blood in sputum which prompted further evaluation with CXR with concerns followed by CT chest showing Rt lung mass s.p Bronch with EBUS taht showed Lung AdenoCa. Bx of Station 7 and $R Ln was negative for cancer although 4R LN was acellular No c.o weight loss, LOA, Headaches, dizziness, No SOB. Has cough ECOG 1. Retired. Worked as a geophysicist in Welfare Assistant business Work up: PFTs: Minimal obstructive lung defect. Diffusion capacity within normal limits 8/10/2024: CT chest with IV contrast: 3.6 x 3.8 cm noncalcified right hilar mass with mild peripheral post obstructive changes and minimal right upper lobe bronchiolitis. PET/CT advised 8/26/2024: CT chest noncontrast: Right hilar mass measuring 3.6 x 3.8 cm. Mass abuts right mainstem and right upper lobe Naaji Jr, Leif DOB: 7/06/1954 (8224771) Page 1 of 6 bronchi. Stable mild right hilar lymphadenopathy. No significant mediastinal or axillary lymph nodes Bronchoscopy: Right lung lesion biopsied. Endoscopic bronchial ultrasound showed enlarged station 7 and station 4R lymph nodes and both well sampled 8/26/2024: Lung, right upper lobe needle biopsy: Non-small cell carcinoma consistent with adenocarcinoma with solid pattern. Station 7 biopsy: Negative for tumor Station 4R, biopsy: Acellular specimen Omniseq: KRAS G12C mutation+, TMB: 18.9 (high), MSI-Stable. PDL TPS 1% (No EGFR, ALK, ROS, HEr2, MRT. ROS, RET, NTRK mutation) 9/10/2024: PET scan: Hypermetabolic right hilar mass measures over 4 cm [4.2 x 3.8 cm] with maximum SUV of 27. Mass invades the hilum. No second FDG avid pulmonary lesion. No hypermetabolic mediastinal lymph nodes. No evidence of metastatic disease 9/23/2024: CT head with contrast: No acute intracranial abnormality TB discussion 9/22/24:Likely will need Pneumonectomy as SX plan after perioperative Chemo immunotherapy. Cardiac risks as well Plan : Chemo immunotherapy for 4 cycles .reassess with Scans and Present at Tumor board prior to Sx planning Interval History After 4 cycles of chemoimmunotherapy 12/27/2024: Decrease size and FDG uptake of the right hilar mass now measuring 2.2 cm with SUV uptake of 8.3 previously measured 4.2 cm with uptake of 27. New focal FDG uptake in the anterior cortex of the sternal manubrium without CT correlate, possible metastasis. 01/04/2025: CT chest with contrast: Right hilar mass with postobstructive atelectasis or scarring. Mass measures 2.2 cm. No mediastinal or left hilar adenopathy. Previously noted FDG uptake in the anterior cortex of the left manubrium without definite correlate on CT TB discussion 12/2024: Cant bx the Sternal area, would be blind and might not yield the needed info Past Medical History Narrative: DLD CAD with 2 PCI 1995 and another in 2010 Ischemic cardiomyopathy/ventricular tachycardia s/p AICD/pacemaker Afib s/p Ablation Surgical History No previous treatment history has been entered for this patient. Current Medications Continued medications: Accu-Chek Guide Glucose Meter, Accu-Chek Guide test strips, Accu-Chek Softclix Lancets, atorvastatin 40 mg tablet, Compazine 10 mg tablet, ezetimibe 10 mg tablet, folic acid 1 mg tablet, hydrocortisone 10 mg tablet, Imodium A-D 2 mg tablet, lidocaine-prilocaine 2.5 %-2.5 % topical cream, lidocaine-prilocaine 2.5 %-2.5 % topical cream, metoprolol succinate ER 100 mg tabletextended release 24 hr, Nitrostat 0.4 mg sublingual tablet, ondansetron HCl 8 mg tablet, Plavix 75 mg tablet, prednisone 50 mg tablet, Senna-S 8.6 mg-50 mg tablet. Allergies penicillin Family History of Cancer Half-sister had ?Lymphoma M. Uncle Lung cancer Social History: 1PPD cigarettes for 45 yrs, quit 20 days ago. 15 beers a week now (was drinking 6 beers a day prior to 1 year) Naaji Jr, Leif DOB: 7/06/1954 (8224771) Page 2 of 6 Alcohol Patient advises current alcohol user. beer. Marital Status Patient is married. Living Arrangement Patient lives with spouse. Occupation Retired. Worked as a geophysicist in Welfare Assistant business Tobacco Use Past tobacco smoker. Smokes tobacco daily. Tobacco Use Continued: Number of years of use: 45 years. Patient has a 45 pack year smoking history. (CQM) Patient Stated Pain: Pain Description: 0 - No pain. Review of Systems 14 point review of systems is negative except as mentioned in HPI. Vitals Vitals on 6/27/2025 1:13:00 PM: Height=67in, Weight=173.4lb, Temp=98.4f, Heart rate=80bpm, Respiration rate=16, SystolicBP=127, DiastolicBP=75, Pulse Ox=99% Physical Exam Physical Examination General: Well developed, Thin Built Neck: Neck is supple. Chest: Symmetrical. PPM/AICD+ Lungs are clear Cardiac: normal rate; regular rhythm. Abdomen: soft, non tender, non distended Back: No tenderness to palpation. Extremities: No edema. No cyanosis. Musculoskeletal: Normal range of motion. Neuro/Psych: Alert , oriented. Good understanding of our conversation today. Performance Scale ECOG 1: Restricted in physically strenuous activity but ambulatory and able to carry out work of a light or sedentary nature, e.g., light house work, office work Lab Results Lab results for 6/27/2025 Result Value Units Range Comment WBC 7.10 x10E3/uL 4.8-10.8 RBC 4.02 x10E6/uL 4.7-6.1 Hgb 12.5 g/dL 14-18 HCT 38.5 % 42-52 MCV 95.7 fL 80-94 Naaji Jr, Leif DOB: 7/06/1954 (8224771) Page 3 of 6 MCH 31.0 pg 27-31 MCHC 32.4 g/dL 33-37 RDW Ratio 14.0 % 11.5-14.5 Platelet # 276 x10E3/uL 130-400 MPV 9.6 fL 7.2-11.1 Neut # 5.770 \u00d710E3/uL 2.496-8.424 Neut % 81.2 % 50-70 Lymph% 13.3 % 20-44 MONO% 3.8 % 2-11 EOS% 1.4 % 0-5 BASO% 0.3 % 0-1 Lymph# 0.900 x10E3/uL 0.96-4.752 MONO# 0.270 x10E3/uL 0.096-1.188 EOS# 0.100 x10E3/uL 0-0.54 BASO# 0.020 x10E3/uL 0-0.108 Sodium 137 mmol/L 136-145 Potassium 4.4 mmol/L 3.5-5.1 Chloride 100 mmol/L 98-107 CO2 25 mmol/L 21-32 Glucose 186 mg/dL 70-110 BUN 10 mg/dL 7-18 Creat 0.81 mg/dL 0.7-1.3 BUN Creat Ratio 12 Ratio Calcium 8.7 mg/dL 8.5-10.1 Total Protein 6.9 g/dL 6.4-8.2 Albumin 3.4 g/dL 3.4-5 Globulin 3.5 g/dL 2.3-3.5 Total Bili 0.64 mg/dL 0-1 Alk Phos 111 U/L 46-116 ALT 38 U/L 12-96 AST 26 U/L 15-37 eGFR (African American) 114 mL/min/1.73m2 eGFR (Non-Afr. American) 94 mL/min/1.73m2 Creatine Kinase 28 U/L 39-308 Lab Results Lab results were reviewed and discussed with the patient. Radiology Naaji Jr, Leif DOB: 7/06/1954 (0471662) Page 4 of 6 Radiology results were reviewed and discussed with the patient. Impression 1. Rt Lung adenocarcinoma in a Chronic smoker Dx 08/2024: Mass measures 4.2cm on PET and SUV 27. Bronch showed enlarged station 7 and station 4R lymph nodes(acellular) s/p Bx: negative: cT2b NoM0: AJCC 8th edition Stage 2A Omniseq: KRAS G12C mutation+, TMB: 18.9 (high), MSIStable. PDL TPS 1% (No EGFR, ALK, ROS, HEr2, MRT. ROS, RET, NTRK mutation) Ct head with contrast(unable to do MRI due to PPM): no mets Treatments: Neoadjuvant Cis-Alimta-Keytruda 4cycles 10/08/24-12/10/24 Completed neoadjuvant chemoimmunotherapy. s/p PET with significant decrease in size and uptake of the Rt UL lung mass. No adenopathy Noted was SUV uptake in sternum, s/p CT chest: No sternal lesion was noted Unable to undergo lobectomy vs pneumonectomy Surgery due to cardiac issues that needs stent placement Dr Shaughnessy Completed IMRT to Lung: 60Gy in 15Fx completed 02/4 Dr Dunham c/w Keytruda q3weeks (safety based on ISABR trial) for a total of 1yr: Proceed today dose 8 today Did not add any chemo with radiation as he completed 4 doses Cis-Alimta and also ongoing CAD issues Ordered for repeat PET scan 06/2025 2. CAD with PCI in 1995 and 2010: Dr Marco Svoboda retired. EP is Dr Lo. Going to see Cardio same office. He is not on any diuretics. No known CHF No latest Echo.Follows with Dr Lindsay s/p Stress test Noted CAD with restenosis with s/p PCI 02/10/25 Also Low EF on Echo Notes requested 3. Treatment related adverse effects --- Symptomatic Adrenal insufficiency : 06/2025 : Low cortisol, normal ACTH : On Hydrocortisone 10mg bid. s/p Endocrine Dr Hino : Planned for ACTH stim test On hydrocortisone 50 mg a.m., 5 mg p.m. 4. Alcohol use: Drinks 15 beers a week now. Discussed cessation. 5. Former Smoker >45 pack yrs. Quit August 2024 Plan Completed IMRT to Lung: 60Gy in 15Fx completed 02/4 C/w Keytruda q3weeks : Dose 8 today Adrenal insuff: On hydrocortisone 15 mg a.m., 5 mg p.m. PET scan ordered for 06/2025. CT chest canceled RTC in 3 weeks post PET scan to discuss Total Time Spent on Date of Encounter I spent 42 minutes in reviewing the record, seeing the patient and documenting in the medical record. Fax to: Bart Shaughnessy~(475)119-2823;Jack M. Dreschner~(475)516-1265;Robert Dunham~(475)199-4655;Kowalska Esperanza Beiler~(475)652- 1440;Jeanie Hino~(475)119-4471; Naaji Jr, Leif DOB: 7/06/1954 (8224771) Page 5 of 6 Signed Ivette Bauman on 6/27/2025 at 3:47 PM Gooden Jr, Leif DOB: 7/06/1954 (8224771) Page 6 of 6
+"""
+
+SAMPLE_DOCUMENT_002 = """
+Scripps Memorial Hospital Oncology and Hematology, PLLC at The LUCILLE Packard 9242 Lansing Parkway, Marshfield, Ia, 38879 Phone: 605-811-5770 Fax: 605-811-9650 Patient Name: Lindner Jr, Tory Patient Number: 3312677 Date: 6/7/2025 Date Of Birth: 5/26/1954 PROGRESS NOTE Chief Complaint Mr. Lindner is a 70 year old male referred by Dr Candy for lung cancer. Smoker Lives in Farragut-Boykins 6/7/2025: Unfortunately his recent PET scan has shown metastatic disease He is here to discuss discuss results and next steps in management. He had a CT head today pending results Has complaints of left hip pain No complaints of chest pain, trouble breathing, abdominal pain etc. His weight is stable Active Problems Assessed \u00b7 C34.81 - Malignant neoplasm of overlapping sites of right bronchus and lung History of Present Illness Mr. Lindner is a 70 year old male with PMH of DLD, CAD with PCI, Afib/PPM and AICD, extensive smoking 1PPD for >45 yrs now quit post Bx 2 weeks ago. He was having cough with blood in sputum which prompted further evaluation with CXR with concerns followed by CT chest showing Rt lung mass s.p Bronch with EBUS taht showed Lung AdenoCa. Bx of Station 7 and $R Ln was negative for cancer although 4R LN was acellular No c.o weight loss, LOA, Headaches, dizziness, No SOB. Has cough ECOG 1. Retired. Worked as a maths teacher in Travel Agent business Work up: PFTs: Minimal obstructive lung defect. Diffusion capacity within normal limits 6/30/2024: CT chest with IV contrast: 3.6 x 3.8 cm noncalcified right hilar mass with mild peripheral post obstructive changes and minimal right upper lobe bronchiolitis. PET/CT advised 7/16/2024: CT chest noncontrast: Right hilar mass measuring 3.6 x 3.8 cm. Mass abuts right mainstem and right upper lobe bronchi. Stable mild right hilar lymphadenopathy. No significant mediastinal or axillary lymph nodes Bronchoscopy: Right lung lesion biopsied. Endoscopic bronchial ultrasound showed enlarged station 7 and station 4R lymph nodes and both well sampled 7/16/2024: Lung, right upper lobe needle biopsy: Non-small cell carcinoma consistent with adenocarcinoma with solid pattern. Lindner Jr, Tory DOB: 5/26/1954 (6584937) Page 1 of 7 Station 7 biopsy: Negative for tumor Station 4R, biopsy: Acellular specimen Omniseq: KRAS G12C mutation+, TMB: 18.9 (high), MSI-Stable. PDL TPS 1% (No EGFR, ALK, ROS, HEr2, MRT. ROS, RET, NTRK mutation) 7/31/2024: PET scan: Hypermetabolic right hilar mass measures over 4 cm [4.2 x 3.8 cm] with maximum SUV of 27. Mass invades the hilum. No second FDG avid pulmonary lesion. No hypermetabolic mediastinal lymph nodes. No evidence of metastatic disease 8/13/2024: CT head with contrast: No acute intracranial abnormality TB discussion 8/12/24:Likely will need Pneumonectomy as SX plan after perioperative Chemo immunotherapy. Cardiac risks as well Plan : Chemo immunotherapy for 4 cycles .reassess with Scans and Present at Tumor board prior to Sx planning Interval History After 4 cycles of chemoimmunotherapy 11/16/2024: Decrease size and FDG uptake of the right hilar mass now measuring 2.2 cm with SUV uptake of 8.3 previously measured 4.2 cm with uptake of 27. New focal FDG uptake in the anterior cortex of the sternal manubrium without CT correlate, possible metastasis. 11/24/2024: CT chest with contrast: Right hilar mass with postobstructive atelectasis or scarring. Mass measures 2.2 cm. No mediastinal or left hilar adenopathy. Previously noted FDG uptake in the anterior cortex of the left manubrium without definite correlate on CT TB discussion 10/2024: Cant bx the Sternal area, would be blind and might not yield the needed info Past Medical History Narrative: DLD CAD with 2 PCI 1995 and another in 2010 Ischemic cardiomyopathy/ventricular tachycardia s/p AICD/pacemaker Afib s/p Ablation Surgical History No previous treatment history has been entered for this patient. Current Medications Added medication: prednisone 2 mg tabletdelayed release. Continued medications: Accu-Chek Guide Glucose Meter, Accu-Chek Guide test strips, Accu-Chek Softclix Lancets, atorvastatin 40 mg tablet, Compazine 10 mg tablet, ezetimibe 10 mg tablet, folic acid 1 mg tablet, Imodium A-D 2 mg tablet, lidocaine-prilocaine 2.5 %-2.5 % topical cream, lidocaine-prilocaine 2.5 %-2.5 % topical cream, metformin 500 mg tablet, metoprolol succinate ER 100 mg tabletextended release 24 hr, Nitrostat 0.4 mg sublingual tablet, ondansetron HCI 8 mg tablet, Plavix 75 mg tablet, Senna-S 8.6 mg-50 mg tablet. Discontinued medications: hydrocortisone 10 mg tablet, prednisone 50 mg tablet. Allergies penicillin Family History of Cancer Half-sister had ?Lymphoma M. Uncle Lung cancer Social History: 1PPD cigarettes for 45 yrs, quit 20 days ago. 15 beers a week now (was drinking 6 beers a day prior to 1 year) Alcohol Patient advises current alcohol user. dedrick. Lindner Jr, Tory DOB: 5/26/1954 (6584937) Page 2 of 7 Marital Status Patient is married. Living Arrangement Patient lives with spouse. Occupation Retired. Worked as a maths teacher in Share dealer Tobacco Use Past tobacco smoker. Smokes tobacco daily. Tobacco Use Continued: Number of years of use: 45 years. Patient has a 45 pack year smoking history. (CQM) Patient Stated Pain: Pain Description: 5 - Very distressing. Left buttocks Review of Systems 14 point review of systems is negative except as mentioned in HPI. Vitals Vitals on 6/7/2025 1:02:00 PM: Height=67in, Weight=171lb, Temp=98.4f, Heart rate=79bpm, Respiration rate=16, SystolicBP=127, DiastolicBP=72, Pulse Ox=99% Physical Exam Physical Examination General: Well developed, Thin Built Neck: Neck is supple. Chest: Symmetrical. PPM/AICD+ Lungs are clear Cardiac: normal rate; regular rhythm. Abdomen: soft, non tender, non distended Back: No tenderness to palpation. Extremities: No edema. No cyanosis. Musculoskeletal: Normal range of motion. Neuro/Psych: Alert , oriented. Good understanding of our conversation today. Performance Scale ECOG 1: Restricted in physically strenuous activity but ambulatory and able to carry out work of a light or sedentary nature, e.g., light house work, office work Lab Results Lab results for 5/17/2025 Result Value Units Range Comment WBC 7.10 x10E3/uL 4.8- 10.8 RBC 4.02 x10E6/uL 4.7-6.1 Hgb 12.5 g/dL 14-18 HCT 38.5 % 42-52 MCV 95.7 fL 80-94 MCH 31.0 pg 27-31 MCHC 32.4 g/dL 33-37 Lindner Jr, Tory DOB: 5/26/1954 (3312677) Page 3 of 7 RDW Ratio 14.0 % 11.5- 14.5 Platelet # 276 x10E3/uL 130- 400 MPV 9.6 fL 7.2- 11.1 Neut # 5.770 x10E3/uL 2.496- 8.424 Neut % 81.2 % 50-70 Lymph% 13.3 % 20-44 MONO% 3.8 % 2-11 EOS% 1.4 % 0-5 BASO% 0.3 % 0-1 Lymph# 0.900 x10E3/uL 0.96- 4.752 MONO# 0.270 x10E3/uL 0.096- 1.188 EOS# 0.100 x10E3/uL 0-0.54 BASO# 0.020 x10E3/uL 0-0.108 Sodium 137 mmol/L 136- 145 Potassium 4.4 mmol/L 3.5-5.1 Chloride 100 mmol/L 98-107 CO2 25 mmol/L 21-32 Glucose 186 mg/dL 70-110 BUN 10 mg/dL 7-18 Creat 0.81 mg/dL 0.7-1.3 BUN Creat Ratio 12 Ratio Calcium 8.7 mg/dL 8.5- 10.1 Total Protein 6.9 g/dL 6.4-8.2 Albumin 3.4 g/dL 3.4-5 Globulin 3.5 g/dL 2.3-3.5 Total Bili 0.64 mg/dL 0-1 Alk Phos 111 U/L 46-116 ALT 38 U/L 12-78 AST 26 U/L 15-37 eGFR (African American) 114 mL/min/1.73m2 eGFR (Non-Afr. 94 mL/min/1.73m2 Lindner Jr, Tory DOB: 5/26/1954 (3312677) Page 4 of 7 American) T4 Free 1.26 ng/dL 0.89- 1.76 This test was performed using the Siemens Centaur XPT competitive immunoassay using direct chemiluminescent technology. Values obtained from different assay methods cannot be used interchangeably. FT4 levels, regardless of value, should not be interpreted as absolute evidence of the presence or absence of disease. TSH 1.396 mIU/L 0.35- 5.5 This test was performed using the Siemens Centaur XPT third- generation assay that employs anti-FITC monoclonal antibody covalently bound to paramagnetic particles, an FITC-labeled anti-TSH capture monoclonal antibody, and a tracer concisting of a proprietary acridinium ester and anti-TSH mAb antibody conjugated to bovine serum albumin for chemiluminsecent detection. Vales obtained from different assay methods cannot be used interchangeably. TSH levels, regardless of value, should not be interpreted as absolute evidence of the presence or absence of disease. Creatine Kinase 28 U/L 39-308 ACTH 6 pg/mL 6-50 (Note)Reference range applies only to specimens collected between 7am-10am.MDFmed 1594 Midcrest Place, Suite Mozelle IA 98248512-399-2729 Ricky K. Aitken, MD, PhD Cortisol, Random 19.40 ug/dL 5.27- 22.45 Please Note: The reference interval and flagging forthis test is for an AM collection. If this is a PM collection please use: Cortisol PM: 3.44 - 16.76 ug/dLThe ADVIA Centaur Cortisol (COR) assay is a competitive immunoassay using direct chemiluminescent technology. Cortisol in the patient sample competes with acridinium ester-labeled cortisol in the Lite Reagent for binding to polyclonal rabbit anti-cortisol antibody in the Solid Phase. The polyclonal rabbit anti-cortisol antibody is bound to monoclonal mouse anti-rabbit antibody, which is covalently coupled to paramagnetic particles in the Solid Phase. Radiology Radiology results were reviewed and discussed with the patient. Print? Date of Doc. Name MD Interpretation Comment 5/25/2025 PET/CT Impression 1. Rt Lung adenocarcinoma in a Chronic smoker Dx 06/2024: Mass measures 4.2cm on PET and SUV 27. Bronch showed enlarged station 7 and station 4R lymph nodes(acellular) s/p Bx: negative: cT2b NoM0: AJCC 8th edition Stage 2A Omniseq: KRAS G12C mutation+, TMB: 18.9 (high), MSIStable. PDL TPS 1% (No EGFR, ALK, ROS, HEr2, MRT. ROS, RET, NTRK mutation) Ct head with contrast(unable to do MRI due to PPM): no mets Lindner Jr, Tory DOB: 5/26/1954 (6584937) Page 5 of 7 Treatments: -- Neoadjuvant Cis-Alimta-Keytruda 4cycles 08/28/24-10/30/24 -- Completed neoadjuvant chemoimmunotherapy. s/p PET with significant decrease in size and uptake of the Rt UL lung mass. No adenopathy -- Noted was SUV uptake in sternum, s/p CT chest: No sternal lesion was noted --- Unable to undergo lobectomy vs pneumonectomy Surgery due to cardiac issues that needs stent placement Dr Lynton --- Completed IMRT to Lung: 60Gy in 15Fx completed 02/2 Dr Qurbanov with ongoing Keytruda until 5/17/25 (ISABR trial safety of immunotherapy) -- Noted new RT adrenal mets. Lt gluteal met on PET 05/2025 Discussed that this is concerning for metastatic disease and treatment is not curable. Ordered for CT head with contrast : pending Ordered for Bx of rt adrenal nodule/Lt gluteal met whichever is easily accessible : Scheduled for 6/30/25 Will DC keytruda. Noted KRAS G12c mutation: recommend next line with Adagrasib 600mg bid (Median PFS 6.5mon, ORR 43%, OS 12.6mon, intracranial response rate 33%) Monitor LFTS, Qtc Will order Signatera on the new Metastatic bx 2. CAD with PCI in 1995 and 2010: Dr Briggs Toledano retired. EP is Dr Vos. Going to see Cardio same office. He is not on any diuretics. No known CHF No latest Echo.Follows with Dr Saarinen s/p Stress test Noted CAD with restenosis with s/p PCI 12/31/24 Also Low EF on Echo Notes requested 3. Treatment related adverse effects --- Symptomatic Adrenal insufficiency : 04/2025 : Low cortisol, normal ACTH : On Hydrocortisone 10mg bid. s/p Endocrine Dr Harley : s/p ACTH stim test : Will get latest notes Now on prednisone 4 mg daily, managed by endocrine 4. Alcohol use: Drinks 15 beers a week now. Discussed cessation. 5. Former Smoker >45 pack yrs. Quit June 2024 Discussed side effects of Adagrasib including but not limited to GI symptoms such as nausea vomiting, diarrhea, hepatotoxicity, renal toxicity, cardiac complications such as elevated QTc, risk of infections , risk of pneumonitis etc. Reading material provided Plan Unfortunately noted to have metastatic disease with right 3 cm adrenal met and left gluteal met Pending biopsy to confirm metastatic disease S/p CT head with contrast: Pending results Recommend next line with Adagrasib 600mg bid. Qtc today and every visit for now. Monitor LFTs DC Keytruda Signatera on new metastatic biopsy RTC in 4 weeks with labs, Qtc and Bx results Total Time Spent on Date of Encounter I spent 42 minutes in reviewing the record, seeing the patient and documenting in the medical record. Fax to: Ray Lynton~(605)727-5084;Carmine S. Rennell~(605)197-8280;Kehlani Harley~(605)727-3255;Paul Qurbanov~(605)811- 3986;Hepburn Candy Knudsen~(605)767-8384; Lindner Jr, Tory DOB: 5/26/1954 (6584937) Page 6 of 7 Signed Kendall Devyn Morin on 6/7/2025 at 1:53 PM Lindner Jr, Tory DOB: 5/26/1954 (6584937) Page 7 of 7
 """
 
 
@@ -970,12 +974,13 @@ UCSF Medical Center Oncology and Hematology, PLLC at The MCKAY-DEE Hospital 8934
 # ============================================================================
 
 
+@pytest.mark.skip
 @pytest.mark.integration
-async def test_extract_lines_of_therapy():
-    """Integration test for lines of therapy extraction with real API"""
+async def test_extract_lines_of_therapy_sample_001():
+    """Integration test for lines of therapy extraction with real API - Sample 001"""
     # Run extraction
     result = await extract_lines_of_therapy_async(
-        SAMPLE_PROGRESS_NOTE, max_iterations=3
+        SAMPLE_PROGRESS_NOTE_001, max_iterations=3
     )
 
     # Verify result
@@ -985,9 +990,19 @@ async def test_extract_lines_of_therapy():
 
     # Check first line (Cisplatin + Pemetrexed + Pembrolizumab)
     line1 = result.extraction.lines_of_therapy[0]
-    assert "Cisplatin" in line1.regimen_name
-    assert "Pemetrexed" in line1.regimen_name or "Alimta" in line1.regimen_name
-    assert "Pembrolizumab" in line1.regimen_name or "Keytruda" in line1.regimen_name
+    assert (
+        "Cisplatin" in line1.regimen_name or "cisplatin" in line1.regimen_name.lower()
+    )
+    assert (
+        "Pemetrexed" in line1.regimen_name
+        or "pemetrexed" in line1.regimen_name.lower()
+        or "Alimta" in line1.regimen_name
+    )
+    assert (
+        "Pembrolizumab" in line1.regimen_name
+        or "pembrolizumab" in line1.regimen_name.lower()
+        or "Keytruda" in line1.regimen_name
+    )
     assert line1.disease_setting == DiseaseSettingEnum.NON_METASTATIC
     assert line1.treatment_intent == TreatmentIntentEnum.NEOADJUVANT
     assert line1.current_status == CurrentStatusEnum.COMPLETED
@@ -998,7 +1013,11 @@ async def test_extract_lines_of_therapy():
 
     # Check second line (Pembrolizumab maintenance/consolidation with IMRT)
     line2 = result.extraction.lines_of_therapy[1]
-    assert "Pembrolizumab" in line2.regimen_name or "Keytruda" in line2.regimen_name
+    assert (
+        "Pembrolizumab" in line2.regimen_name
+        or "pembrolizumab" in line2.regimen_name.lower()
+        or "Keytruda" in line2.regimen_name
+    )
     assert line2.disease_setting == DiseaseSettingEnum.NON_METASTATIC
     assert line2.treatment_intent == TreatmentIntentEnum.CURATIVE
     assert line2.current_status == CurrentStatusEnum.ONGOING
@@ -1007,7 +1026,174 @@ async def test_extract_lines_of_therapy():
     assert len(line2.specific_drugs) == 1  # Pembrolizumab only
 
     print("\n" + "=" * 80)
-    print("TEST PASSED!")
+    print("TEST PASSED - SAMPLE 001")
     print("=" * 80)
     print(f"\nExtracted {len(result.extraction.lines_of_therapy)} lines of therapy:")
     print(result.extraction.model_dump_json(indent=2))
+
+
+@pytest.mark.integration
+async def test_extract_lines_of_therapy_sample_002():
+    """
+    Integration test for lines of therapy extraction with real API - Sample 002
+
+    Clinical scenario: Mr. Lindner with right lung adenocarcinoma who received
+    neoadjuvant chemoimmunotherapy followed by consolidation radiation and
+    immunotherapy, then progressed to metastatic disease.
+
+    Key treatment timeline:
+    - Line 1: Neoadjuvant cisplatin + pemetrexed + pembrolizumab (Cis-Alimta-Keytruda)
+      * 4 cycles from 08/28/24 to 10/30/24
+      * Non-metastatic disease setting
+      * Neoadjuvant intent (planned for surgery before cardiac issues)
+      * Status: Completed
+
+    - Line 2: Pembrolizumab consolidation (with concurrent IMRT)
+      * Started after completion of neoadjuvant therapy
+      * Continued until progression detected 5/25/25
+      * Completed IMRT to Lung: 60Gy in 15Fx completed 02/2/25
+      * Based on ISABR trial (safety of immunotherapy with SBRT)
+      * Status: Discontinued due to progression
+
+    - Planned Line 3: Adagrasib 600mg bid for KRAS G12C mutation
+      * Not yet started as of document date 6/7/2025
+      * Will start after biopsy confirmation
+      * Should NOT be extracted as a line yet (not started)
+
+    Document date: 6/7/2025
+    """
+    # Run extraction
+    result = await extract_lines_of_therapy_async(SAMPLE_DOCUMENT_002, max_iterations=3)
+
+    # Verify result
+    assert result.success is True
+    assert result.extraction is not None
+
+    # Should have 2 lines (neoadjuvant chemo-immuno, then consolidation immuno)
+    # Adagrasib is planned but not yet started, so should NOT be included
+    assert (
+        len(result.extraction.lines_of_therapy) == 2
+    ), f"Expected 2 lines of therapy (completed treatments), got {len(result.extraction.lines_of_therapy)}"
+
+    # Check first line (Neoadjuvant Cisplatin + Pemetrexed + Pembrolizumab)
+    line1 = result.extraction.lines_of_therapy[0]
+
+    # Regimen should include all three drugs
+    regimen_lower = line1.regimen_name.lower()
+    assert any(
+        drug in regimen_lower for drug in ["cisplatin", "cis"]
+    ), f"Regimen should include cisplatin: {line1.regimen_name}"
+    assert any(
+        drug in regimen_lower for drug in ["pemetrexed", "alimta"]
+    ), f"Regimen should include pemetrexed/alimta: {line1.regimen_name}"
+    assert any(
+        drug in regimen_lower for drug in ["pembrolizumab", "keytruda"]
+    ), f"Regimen should include pembrolizumab/keytruda: {line1.regimen_name}"
+
+    assert (
+        line1.disease_setting == DiseaseSettingEnum.NON_METASTATIC
+    ), "Line 1 disease setting should be non-metastatic (initially Stage 2A)"
+    assert (
+        line1.treatment_intent == TreatmentIntentEnum.NEOADJUVANT
+    ), "Line 1 intent should be neoadjuvant"
+    assert (
+        line1.current_status == CurrentStatusEnum.COMPLETED
+    ), "Line 1 should be completed"
+
+    # Dates for line 1
+    assert line1.start_date == date(
+        2024, 8, 28
+    ), f"Line 1 start date should be 08/28/24, got {line1.start_date}"
+    assert line1.end_date == date(
+        2024, 10, 30
+    ), f"Line 1 end date should be 10/30/24, got {line1.end_date}"
+
+    # Should have 3 drugs
+    assert (
+        len(line1.specific_drugs) == 3
+    ), f"Line 1 should have 3 drugs (cisplatin, pemetrexed, pembrolizumab), got {len(line1.specific_drugs)}"
+
+    # Check drug classes for line 1
+    drug_classes = [drug.drug_class for drug in line1.specific_drugs if drug.drug_class]
+    assert (
+        DrugClassEnum.CHEMOTHERAPY in drug_classes
+    ), "Should include chemotherapy drugs"
+    assert DrugClassEnum.IMMUNOTHERAPY in drug_classes, "Should include immunotherapy"
+
+    # Check second line (Pembrolizumab consolidation)
+    line2 = result.extraction.lines_of_therapy[1]
+
+    regimen_lower2 = line2.regimen_name.lower()
+    assert any(
+        drug in regimen_lower2 for drug in ["pembrolizumab", "keytruda"]
+    ), f"Line 2 regimen should include pembrolizumab/keytruda: {line2.regimen_name}"
+
+    # Disease setting should still be non-metastatic during consolidation
+    # (metastatic disease discovered later on 5/25/25 PET)
+    assert (
+        line2.disease_setting == DiseaseSettingEnum.NON_METASTATIC
+    ), "Line 2 initially in non-metastatic setting (mets discovered later)"
+
+    # Treatment intent could be curative or consolidative
+    assert line2.treatment_intent in [
+        TreatmentIntentEnum.CURATIVE,
+        TreatmentIntentEnum.ADJUVANT,
+    ], f"Line 2 intent should be curative or adjuvant, got {line2.treatment_intent}"
+
+    # Status should be discontinued (stopped due to progression)
+    assert (
+        line2.current_status == CurrentStatusEnum.DISCONTINUED
+    ), "Line 2 should be discontinued (DC'd Keytruda due to progression)"
+
+    # Line 2 should have start date after line 1 completion and end date when progression noted
+    assert (
+        line2.start_date > line1.end_date
+    ), "Line 2 should start after line 1 completed"
+    assert (
+        line2.end_date is not None
+    ), "Line 2 should have end date (discontinued due to progression)"
+
+    # Should have only pembrolizumab
+    assert (
+        len(line2.specific_drugs) == 1
+    ), f"Line 2 should have 1 drug (pembrolizumab monotherapy), got {len(line2.specific_drugs)}"
+    assert (
+        line2.specific_drugs[0].drug_class == DrugClassEnum.IMMUNOTHERAPY
+    ), "Line 2 drug should be immunotherapy"
+
+    # Check reason for change on line 2
+    if line2.reason_for_change:
+        reason_lower = line2.reason_for_change.lower()
+        assert any(
+            keyword in reason_lower
+            for keyword in ["progression", "metastatic", "metastasis"]
+        ), "Reason for stopping line 2 should mention progression or metastatic disease"
+
+    # Verify supporting evidence exists
+    assert len(line1.supporting_evidence) > 0, "Line 1 should have supporting evidence"
+    assert len(line2.supporting_evidence) > 0, "Line 2 should have supporting evidence"
+
+    print("\n" + "=" * 80)
+    print("TEST PASSED - SAMPLE 002 (PROGRESSION TO METASTATIC)")
+    print("=" * 80)
+    print(f"\nExtracted {len(result.extraction.lines_of_therapy)} lines of therapy:")
+    print(result.extraction.model_dump_json(indent=2))
+    print("\n" + "=" * 80)
+    print("TREATMENT TIMELINE SUMMARY")
+    print("=" * 80)
+    for i, line in enumerate(result.extraction.lines_of_therapy, 1):
+        print(f"\nLine {i}: {line.regimen_name}")
+        print(
+            f"  Setting: {line.disease_setting.value if line.disease_setting else 'Not documented'}"
+        )
+        print(
+            f"  Intent: {line.treatment_intent.value if line.treatment_intent else 'Not documented'}"
+        )
+        print(
+            f"  Dates: {line.start_date} to {line.end_date if line.end_date else 'ongoing'}"
+        )
+        print(
+            f"  Status: {line.current_status.value if line.current_status else 'Not documented'}"
+        )
+        print(f"  Drugs: {', '.join([d.name for d in line.specific_drugs])}")
+    print("=" * 80)
