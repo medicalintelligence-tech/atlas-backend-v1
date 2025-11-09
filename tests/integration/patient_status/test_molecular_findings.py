@@ -464,9 +464,6 @@ class TestReport(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    test_date: Optional[date] = Field(
-        None, description="Date test was performed or reported"
-    )
     test_name: Optional[str] = Field(
         None,
         description="Name of test (e.g., 'Omniseq', 'FoundationOne CDx', 'Guardant360', 'Tempus xT')",
@@ -831,7 +828,6 @@ Extract when a gene is explicitly reported as wildtype/not detected and this is 
 ## Report vs Finding Structure
 
 **CRITICAL**: Findings are grouped under TEST REPORTS. Each report has:
-- **test_date**: YYYY-MM-DD (when test was performed) (or null if not specified)
 - **test_name**: "Omniseq", "FoundationOne", "Guardant360", etc. (or null if not specified)
 - **test_methods**: List of test methods used (e.g., ["NGS", "IHC", "FISH", "PCR"]) - REQUIRED, a single report can use multiple methods
 - **specimen_type**: "tissue", "blood", "plasma", "bone marrow", etc. (or null)
@@ -841,12 +837,12 @@ Extract when a gene is explicitly reported as wildtype/not detected and this is 
   - "Liver metastasis" → "liver metastasis"
   - "Primary tumor, colon" → "primary tumor, colon"
   - Use null only if no site information in document
+- **tumor_content**: Tumor content/cellularity as percentage (0-100) if reported (or null)
 - **findings**: List of all findings from this report
 
 Each report can have multiple findings. All findings from the same test report should be grouped together.
 
 **When to create separate reports**:
-- If document mentions multiple test dates → separate reports
 - If document mentions multiple test names (e.g., Omniseq + separate germline test) → separate reports
 - If document is a single comprehensive report → one report with all findings
 
@@ -874,11 +870,11 @@ Generate markdown with findings nested under reports:
 
 ```
 # Report 1
-Test Date: YYYY-MM-DD or null
 Test Name: [test name or null]
 Test Methods: [method1, method2, ...]
 Specimen Type: [specimen type or null]
 Specimen Site: [specimen site or null]
+Tumor Content: [percentage or null]
 
 ## Finding 1: [VARIANT|CNA|FUSION|IHC|FISH|SIGNATURE|WILDTYPE]
 Finding Type: [variant|cna|fusion|ihc|fish|signature|wildtype]
@@ -990,8 +986,8 @@ VALIDATION_SYSTEM_PROMPT = """You are a meticulous validator checking extracted 
    - Fusion fields: gene_5prime, gene_3prime, origin, fusion_type, exon_5prime, exon_3prime, variant_frequency
    - Signature fields: signature_type, result, quantitative_value, unit, msi_result, mmr_result
    - Wildtype fields: gene, origin, alteration_type_tested
-   - Report fields: test_date, test_name, test_methods (required list), specimen_type, specimen_site, tumor_content
-   - NO fields like: report_id, clinical_significance, etc.
+   - Report fields: test_name, test_methods (required list), specimen_type, specimen_site, tumor_content
+   - NO fields like: report_id, clinical_significance, test_date, etc.
 
 2. **Report Structure**: Are findings properly grouped under reports with report metadata?
 
@@ -1192,7 +1188,7 @@ async def extract_to_pydantic(markdown: str, model) -> MolecularFindingsExtracti
     extraction_agent = Agent(
         model=model,
         output_type=MolecularFindingsExtraction,
-        system_prompt="You are a precise data parser. Convert the provided markdown representation of molecular findings into the structured MolecularFindingsExtraction model. The markdown has a nested structure where findings are grouped under reports. Each report has metadata (test_date, test_name, test_methods, specimen_type, specimen_site, tumor_content) and a list of findings. Note that test_methods is a list of strings. All findings have shared fields (finding_type, raw_text, notes) and most have origin. Use the finding_type field to determine which specific finding model to use (VariantFinding, CNAFinding, FusionFinding, IHCFinding, FISHFinding, SignatureFinding, or WildtypeFinding). CRITICAL: The models have strict validation (extra='forbid') - only include fields that are defined in the schema. Preserve all information accurately.",
+        system_prompt="You are a precise data parser. Convert the provided markdown representation of molecular findings into the structured MolecularFindingsExtraction model. The markdown has a nested structure where findings are grouped under reports. Each report has metadata (test_name, test_methods, specimen_type, specimen_site, tumor_content) and a list of findings. Note that test_methods is a list of strings. All findings have shared fields (finding_type, raw_text, notes) and most have origin. Use the finding_type field to determine which specific finding model to use (VariantFinding, CNAFinding, FusionFinding, IHCFinding, FISHFinding, SignatureFinding, or WildtypeFinding). CRITICAL: The models have strict validation (extra='forbid') - only include fields that are defined in the schema. Preserve all information accurately.",
     )
 
     prompt = f"""
@@ -1200,7 +1196,7 @@ async def extract_to_pydantic(markdown: str, model) -> MolecularFindingsExtracti
     
     Structure:
     - MolecularFindingsExtraction has a list of TestReport objects
-    - Each TestReport has metadata (test_date, test_name, test_methods, specimen_type, specimen_site, tumor_content) and a list of findings
+    - Each TestReport has metadata (test_name, test_methods, specimen_type, specimen_site, tumor_content) and a list of findings
     - Each finding has shared fields (finding_type, raw_text, notes) and most have origin field. Specific types:
       - variant → VariantFinding (with gene, canonical_variant, origin, protein_change, cdna_change, exon, variant_frequency, is_hotspot)
       - cna → CNAFinding (with gene, alteration_direction, origin, copy_number, fold_change, is_focal)
@@ -1465,8 +1461,6 @@ async def test_extract_molecular_findings():
 
     # Check report structure
     report = result.extraction.reports[0]
-    assert report.test_date == date(2024, 8, 26)
-    assert "Omniseq" in report.test_name or "omniseq" in report.test_name.lower()
     assert len(report.test_methods) >= 1
     assert any("NGS" in method.upper() for method in report.test_methods)
     assert len(report.findings) >= 5
@@ -1534,11 +1528,11 @@ async def test_extract_molecular_findings():
     print(f"\nExtracted {len(result.extraction.reports)} report(s):")
     for i, r in enumerate(result.extraction.reports, 1):
         print(f"\n  Report {i}:")
-        print(f"    Test Date: {r.test_date}")
         print(f"    Test Name: {r.test_name}")
         print(f"    Test Methods: {r.test_methods}")
         print(f"    Specimen Type: {r.specimen_type}")
         print(f"    Specimen Site: {r.specimen_site}")
+        print(f"    Tumor Content: {r.tumor_content}")
         print(f"    Findings: {len(r.findings)}")
     print(f"\nTotal findings across all reports: {len(all_findings)}")
     print(f"  - {len(variants)} variants")
