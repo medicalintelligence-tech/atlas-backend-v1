@@ -166,6 +166,14 @@ class AlterationTypeTested(str, Enum):
     ANY_ALTERATION = "any alteration"
 
 
+class Zygosity(str, Enum):
+    """Zygosity of copy number alterations"""
+
+    HOMOZYGOUS = "homozygous"
+    HETEROZYGOUS = "heterozygous"
+    HEMIZYGOUS = "hemizygous"
+
+
 # ============================================================================
 # BASE MODEL - Shared fields across all finding types
 # ============================================================================
@@ -248,6 +256,10 @@ class CNAFinding(MolecularFindingBase):
     is_focal: Optional[bool] = Field(
         None,
         description="Whether this is focal (gene-level) vs broad (chromosomal region)",
+    )
+    zygosity: Optional[Zygosity] = Field(
+        None,
+        description="Zygosity of the alteration: homozygous (both alleles affected), heterozygous (one allele affected), hemizygous (single copy, typically X chromosome in males)",
     )
 
 
@@ -732,12 +744,21 @@ Extract:
   - Add to notes: "Region-level CNA" or "Gene-specific CNA" or "From cytogenetics"
 - Alteration direction: "amplification", "deletion", "gain", "loss", "loss_of_heterozygosity"
 - Copy number (optional): 8.2
+- Fold change (optional): 3.5
+- Is focal (optional): true/false
+- Zygosity (optional): "homozygous", "heterozygous", "hemizygous"
 - Origin: somatic/germline/unknown
+
+**Zygosity extraction** (only when explicitly stated):
+- "homozygous deletion" / "biallelic deletion" → zygosity="homozygous"
+- "heterozygous deletion" / "heterozygous loss" → zygosity="heterozygous"
+- "hemizygous deletion" → zygosity="hemizygous" (typically X chromosome in males)
+- If not mentioned, leave as null
 
 **Examples**:
 - Cytogenetics: "del(11)(q13q23)" → gene="11q13-q23", alteration_direction="deletion", notes="Region-level CNA from cytogenetics"
 - FISH: "KMT2A deletion" → gene="KMT2A", alteration_direction="deletion", notes="Gene-specific CNA by FISH"
-- NGS: "MTAP homozygous deletion" → gene="MTAP", alteration_direction="deletion", notes="Gene-specific CNA"
+- NGS: "MTAP homozygous deletion" → gene="MTAP", alteration_direction="deletion", zygosity="homozygous", notes="Gene-specific CNA"
 
 **Normalization**:
 - Use canonical terms: "amplification" (not "amp"), "deletion" (not "del")
@@ -908,6 +929,7 @@ For CNA:
   Copy Number: [copy number or null]
   Fold Change: [fold change or null]
   Is Focal: [true|false or null]
+  Zygosity: [homozygous|heterozygous|hemizygous or null]
 
 For FUSION:
   Gene 5 Prime: [5' gene]
@@ -990,7 +1012,7 @@ VALIDATION_SYSTEM_PROMPT = """You are a meticulous validator checking extracted 
    - Are all fields in the markdown valid for the target Pydantic schema?
    - No extra fields beyond: finding_type, origin, raw_text, notes, and type-specific fields
    - Variant fields: gene, canonical_variant, origin, protein_change, cdna_change, exon, variant_frequency, is_hotspot
-   - CNA fields: gene, alteration_direction, origin, copy_number, fold_change, is_focal
+   - CNA fields: gene, alteration_direction, origin, copy_number, fold_change, is_focal, zygosity
    - IHC fields: biomarker, intensity_score, percentage_positive, is_positive, staining_intensity, h_score, allred_score, score_type, assay
    - FISH fields: target, ratio, copy_number, is_amplified, is_rearranged, percentage_positive, reference_probe
    - Fusion fields: gene_5prime, gene_3prime, origin, fusion_type, exon_5prime, exon_3prime, variant_frequency
@@ -1212,7 +1234,7 @@ async def extract_to_pydantic(markdown: str, model) -> MolecularFindingsExtracti
     - Each TestReport has metadata (test_name, test_methods, specimen_type, specimen_site, tumor_content) and a list of findings
     - Each finding has shared fields (finding_type, raw_text, notes) and most have origin field. Specific types:
       - variant → VariantFinding (with gene, canonical_variant, origin, protein_change, cdna_change, exon, variant_frequency, is_hotspot)
-      - cna → CNAFinding (with gene, alteration_direction, origin, copy_number, fold_change, is_focal)
+      - cna → CNAFinding (with gene, alteration_direction, origin, copy_number, fold_change, is_focal, zygosity)
       - fusion → FusionFinding (with gene_5prime, gene_3prime, origin, fusion_type, exon_5prime, exon_3prime, variant_frequency)
       - ihc → IHCFinding (with biomarker, intensity_score, percentage_positive, is_positive, staining_intensity, h_score, allred_score, score_type, assay)
       - fish → FISHFinding (with target, ratio, copy_number, is_amplified, is_rearranged, percentage_positive, reference_probe)
@@ -1636,11 +1658,10 @@ async def test_extract_molecular_findings_omniseq():
     ), f"CDKN2A should be deletion, got: {cdkn2a.alteration_direction}"
     assert cdkn2a.origin == Origin.SOMATIC, "CDKN2A deletion should be somatic"
 
-    # Note should mention homozygous if captured
-    if cdkn2a.notes:
-        assert (
-            "homozygous" in cdkn2a.notes.lower()
-        ), "CDKN2A notes should mention homozygous deletion"
+    # Zygosity should be homozygous (explicitly stated in report)
+    assert (
+        cdkn2a.zygosity == Zygosity.HOMOZYGOUS
+    ), f"CDKN2A should be homozygous deletion (explicitly stated in report), got: {cdkn2a.zygosity}"
 
     # ============================================================================
     # VALIDATE GENOMIC SIGNATURES (TMB, MSI)
