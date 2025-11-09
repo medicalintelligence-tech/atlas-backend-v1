@@ -102,7 +102,6 @@ class DiseaseSettingEnum(str, Enum):
     NON_METASTATIC = "non-metastatic"
     LOCALLY_ADVANCED = "locally-advanced"
     METASTATIC = "metastatic"
-    UNKNOWN = "unknown"
 
 
 class TreatmentIntentEnum(str, Enum):
@@ -112,7 +111,6 @@ class TreatmentIntentEnum(str, Enum):
     ADJUVANT = "adjuvant"
     PALLIATIVE = "palliative"
     CURATIVE = "curative"
-    UNKNOWN = "unknown"
 
 
 class DrugClassEnum(str, Enum):
@@ -123,7 +121,6 @@ class DrugClassEnum(str, Enum):
     IMMUNOTHERAPY = "immunotherapy"
     HORMONAL_THERAPY = "hormonal_therapy"
     RADIOPHARMACEUTICAL = "radiopharmaceutical"
-    UNKNOWN = "unknown"
 
 
 class AdministrationRouteEnum(str, Enum):
@@ -133,7 +130,6 @@ class AdministrationRouteEnum(str, Enum):
     INTRAVENOUS = "intravenous"
     SUBCUTANEOUS = "subcutaneous"
     INTRAMUSCULAR = "intramuscular"
-    UNKNOWN = "unknown"
 
 
 class CurrentStatusEnum(str, Enum):
@@ -142,7 +138,6 @@ class CurrentStatusEnum(str, Enum):
     ONGOING = "ongoing"
     COMPLETED = "completed"
     DISCONTINUED = "discontinued"
-    UNKNOWN = "unknown"
 
 
 class Drug(BaseModel):
@@ -150,10 +145,14 @@ class Drug(BaseModel):
 
     name: str = Field(description="Drug name (generic preferred)", min_length=1)
 
-    drug_class: DrugClassEnum = Field(description="Type of anti-cancer drug")
+    drug_class: Optional[DrugClassEnum] = Field(
+        default=None,
+        description="Type of anti-cancer drug (null if cannot be determined)",
+    )
 
-    administration_route: AdministrationRouteEnum = Field(
-        description="How this drug is administered"
+    administration_route: Optional[AdministrationRouteEnum] = Field(
+        default=None,
+        description="How this drug is administered (null if cannot be determined)",
     )
 
 
@@ -169,11 +168,14 @@ class LineOfTherapy(BaseModel):
         description="Individual drugs in this regimen", min_length=1
     )
 
-    disease_setting: DiseaseSettingEnum = Field(
-        description="Disease extent at time of treatment"
+    disease_setting: Optional[DiseaseSettingEnum] = Field(
+        default=None,
+        description="Disease extent at time of treatment (null if cannot be determined)",
     )
 
-    treatment_intent: TreatmentIntentEnum = Field(description="Intent of the therapy")
+    treatment_intent: Optional[TreatmentIntentEnum] = Field(
+        default=None, description="Intent of the therapy (null if cannot be determined)"
+    )
 
     start_date: date = Field(description="When treatment started")
 
@@ -181,7 +183,10 @@ class LineOfTherapy(BaseModel):
         None, description="When treatment ended (null if ongoing)"
     )
 
-    current_status: CurrentStatusEnum = Field(description="Current status of this line")
+    current_status: Optional[CurrentStatusEnum] = Field(
+        default=None,
+        description="Current status of this line (null if cannot be determined)",
+    )
 
     reason_for_change: Optional[str] = Field(
         None, description="Why therapy was stopped or changed"
@@ -209,20 +214,22 @@ class LineOfTherapy(BaseModel):
     @model_validator(mode="after")
     def validate_status_consistency(self):
         """Ensure status matches end_date"""
-        if (
-            self.current_status == CurrentStatusEnum.ONGOING
-            and self.end_date is not None
-        ):
-            raise ValueError("Cannot be ongoing with an end_date")
+        # Only validate if current_status is not None
+        if self.current_status is not None:
+            if (
+                self.current_status == CurrentStatusEnum.ONGOING
+                and self.end_date is not None
+            ):
+                raise ValueError("Cannot be ongoing with an end_date")
 
-        if self.current_status in [
-            CurrentStatusEnum.COMPLETED,
-            CurrentStatusEnum.DISCONTINUED,
-        ]:
-            if self.end_date is None:
-                raise ValueError(
-                    f"Status {self.current_status.value} requires an end_date"
-                )
+            if self.current_status in [
+                CurrentStatusEnum.COMPLETED,
+                CurrentStatusEnum.DISCONTINUED,
+            ]:
+                if self.end_date is None:
+                    raise ValueError(
+                        f"Status {self.current_status.value} requires an end_date"
+                    )
 
         return self
 
@@ -418,11 +425,14 @@ Include all systemic anti-cancer therapies:
 - Systemic radiopharmaceuticals (Lu-177 PSMA, I-131, Ra-223, Y-90)
 - Concurrent chemoradiation (count the chemo component as one line)
 
-Do NOT include:
-- Standalone radiation (EBRT, SBRT, brain/bone radiation)
-- Surgery
-- Local therapies only (RFA, cryotherapy)
-- Supportive care (antiemetics, growth factors, bisphosphonates for bone health)
+Exclude these from lines of therapy (these are procedures/supportive care, not systemic therapy):
+- "received brain radiation" -> exclude (standalone radiation)
+- "underwent right lower lobectomy" -> exclude (surgery)
+- "SBRT to liver lesion" -> exclude (radiation only)
+- "radiofrequency ablation of liver met" -> exclude (local therapy only)
+- "Zofran for nausea" -> exclude (supportive care)
+- "Neulasta for neutropenia" -> exclude (growth factor support)
+- "Zometa for bone health" -> exclude (supportive care, unless part of cancer regimen like in myeloma)
 
 ## When to Start a NEW Line
 
@@ -462,14 +472,14 @@ Disease setting:
 - non-metastatic: Early stage, no distant mets
 - locally-advanced: Unresectable local disease, no distant mets
 - metastatic: Stage IV, distant metastases present
-- unknown: Can't determine
+- null: Only use if truly cannot be determined from context
 
 Treatment intent:
 - neoadjuvant: Before surgery to shrink tumor
 - adjuvant: After surgery to prevent recurrence
 - curative: Intent to cure (some locally-advanced cases)
 - palliative: For metastatic disease to extend life
-- unknown: Can't determine
+- null: Only use if truly cannot be determined from context
 
 Drug classification:
 - chemotherapy: Traditional cytotoxics
@@ -477,7 +487,51 @@ Drug classification:
 - immunotherapy: Checkpoint inhibitors
 - hormonal_therapy: Endocrine agents
 - radiopharmaceutical: Radioactive therapeutic agents
-- unknown: Can't determine
+- null: Only use if truly cannot be determined from context
+
+## Drug Name Standardization
+
+ALWAYS use generic drug names (lowercase), following RxNorm conventions. Convert brand names and abbreviations to generic equivalents:
+
+Common corrections (brand/abbreviation -> generic):
+- "Keytruda" -> "pembrolizumab"
+- "Opdivo" -> "nivolumab"
+- "Tecentriq" -> "atezolizumab"
+- "Alimta" -> "pemetrexed"
+- "Herceptin" -> "trastuzumab"
+- "Avastin" -> "bevacizumab"
+- "Tagrisso" -> "osimertinib"
+- "Erbitux" -> "cetuximab"
+- "5-FU" -> "fluorouracil"
+- "Taxol" -> "paclitaxel"
+- "Platinol" -> "cisplatin"
+- "Paraplatin" -> "carboplatin"
+- "Adriamycin" -> "doxorubicin"
+- "Cytoxan" -> "cyclophosphamide"
+
+## Regimen Name Standardization
+
+Use standard abbreviations from HemOnc.org when available, otherwise use descriptive combination format with generic names (lowercase) and " + " between drugs.
+
+Standard regimen abbreviations to corrections:
+- "Folfox" -> "FOLFOX"
+- "folfox" -> "FOLFOX"
+- "folfirinox with oxaliplatin" -> "FOLFOX"
+- "Folfiri" -> "FOLFIRI"
+- "5FU/LV/irinotecan" -> "FOLFIRI"
+- "Folfirinox" -> "FOLFIRINOX"
+- "folfox with avastin" -> "FOLFOX + bevacizumab"
+- "Folfox + Avastin" -> "FOLFOX + bevacizumab"
+- "r-chop" -> "R-CHOP"
+- "Rituxan-CHOP" -> "R-CHOP"
+
+Non-standard combination corrections (use " + " separator, generic names, proper order):
+- "Cisplatin/Pemetrexed/Pembrolizumab" -> "cisplatin + pemetrexed + pembrolizumab"
+- "Keytruda" -> "pembrolizumab"
+- "Pembro + Chemo" -> "carboplatin + pemetrexed + pembrolizumab"
+- "palbociclib/letrozole" -> "palbociclib + letrozole"
+- "Herceptin and Perjeta" -> "trastuzumab + pertuzumab"
+- "Carboplatin-Paclitaxel-Bevacizumab" -> "carboplatin + paclitaxel + bevacizumab"
 
 Supporting evidence: Include relevant excerpts from progress notes showing treatment start, changes, progression, and end.
 
@@ -488,13 +542,20 @@ Confidence score:
 - 0.3-0.5 = significant uncertainty
 - <0.3 = very uncertain
 
-## Common Mistakes to Avoid
+## Common Scenarios - Single Line vs Multiple Lines
 
-- Don't count palliative radiation to bone/brain as a line
-- Don't break up planned sequential therapies into separate lines
-- Don't create new line for dose adjustments of same regimen
-- Don't confuse brief treatment holds with treatment endings
-- Don't count medication refills as new lines
+Single line examples (keep as ONE line):
+- "AC x4 cycles then weekly paclitaxel x12" -> ONE line (planned sequential therapy)
+- "osimertinib 80mg daily, reduced to 40mg for rash" -> ONE line (dose adjustment)
+- "pembrolizumab held for pneumonitis, resumed 2 weeks later" -> ONE line (brief hold with resumption)
+- "picked up refill of erlotinib" -> continue SAME line (medication refill)
+- "carboplatin/pemetrexed completed, continued pemetrexed maintenance" -> ONE line (planned maintenance)
+
+Multiple line examples (create NEW lines):
+- "FOLFOX for 6 months, then FOLFIRI after progression" -> TWO lines (progression, different regimen)
+- "adjuvant capecitabine completed 2015, now on FOLFOX for metastatic disease 2024" -> TWO lines (different disease setting, years apart)
+- "osimertinib for 2 years, then switched to chemo after T790M resistance" -> TWO lines (progression/resistance, different mechanism)
+- "received palliative radiation to bone" -> ZERO lines (not systemic therapy)
 
 ## Output Format
 
@@ -503,15 +564,15 @@ Generate a markdown document with the following structure for each line of thera
 ```
 ## Line of Therapy 1
 Regimen: [regimen name]
-Disease Setting: [non-metastatic|locally-advanced|metastatic|unknown]
-Treatment Intent: [neoadjuvant|adjuvant|curative|palliative|unknown]
+Disease Setting: [non-metastatic|locally-advanced|metastatic|null]
+Treatment Intent: [neoadjuvant|adjuvant|curative|palliative|null]
 Start Date: YYYY-MM-DD
 End Date: YYYY-MM-DD or null
-Status: [ongoing|completed|discontinued|unknown]
+Status: [ongoing|completed|discontinued|null]
 Reason for Change: [reason or null]
 
 Drugs:
-  - Name: [drug name] | Class: [chemotherapy|targeted_therapy|immunotherapy|hormonal_therapy|radiopharmaceutical|unknown] | Route: [oral|intravenous|subcutaneous|intramuscular|unknown]
+  - Name: [drug name] | Class: [chemotherapy|targeted_therapy|immunotherapy|hormonal_therapy|radiopharmaceutical|null] | Route: [oral|intravenous|subcutaneous|intramuscular|null]
   - Name: [drug name] | Class: [...] | Route: [...]
 
 Supporting Evidence:
