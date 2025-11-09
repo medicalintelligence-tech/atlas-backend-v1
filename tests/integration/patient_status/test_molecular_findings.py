@@ -29,7 +29,7 @@ from typing import Optional, List, Union, Literal
 from datetime import date, datetime
 from enum import Enum
 from dataclasses import dataclass, field as dataclass_field, asdict
-from pydantic_ai import Agent, RunContext
+from pydantic_ai import Agent, RunContext, PromptedOutput
 from pydantic_ai.models.anthropic import AnthropicModel, AnthropicModelSettings
 from pydantic_ai.providers.anthropic import AnthropicProvider
 from pydantic_ai.models.openai import OpenAIResponsesModel, OpenAIResponsesModelSettings
@@ -39,34 +39,37 @@ import pytest
 import json
 
 
-from pydantic import BaseModel, Field, field_validator, ConfigDict
-from typing import List, Optional, Union, Literal
-from enum import Enum
-from datetime import date
+# ============================================================================
+# MODEL CONFIGURATION
+# ============================================================================
 
 
-from pydantic import BaseModel, Field, field_validator, ConfigDict
-from typing import List, Optional, Union, Literal
-from enum import Enum
-from datetime import date
+@dataclass
+class ModelConfig:
+    """Configuration for model with prompted output requirement"""
+
+    model: Union[AnthropicModel, OpenAIResponsesModel]
+    requires_prompted_output: bool = False
 
 
-from pydantic import BaseModel, Field, field_validator, ConfigDict
-from typing import List, Optional, Union, Literal
-from enum import Enum
-from datetime import date
+def wrap_output_type(output_type, requires_prompted_output: bool):
+    """
+    Conditionally wrap output type with PromptedOutput when required.
 
+    Some model configurations (e.g., Anthropic with extended thinking enabled)
+    don't support structured output tools and require PromptedOutput instead.
+    This is an API restriction, not a capability difference.
 
-from pydantic import BaseModel, Field, field_validator, ConfigDict
-from typing import List, Optional, Union, Literal
-from enum import Enum
-from datetime import date
+    Args:
+        output_type: The Pydantic model class for structured output
+        requires_prompted_output: Whether the model requires PromptedOutput wrapper
 
-
-from pydantic import BaseModel, Field, field_validator, ConfigDict
-from typing import List, Optional, Union, Literal
-from enum import Enum
-from datetime import date
+    Returns:
+        PromptedOutput(output_type) if requires_prompted_output, else output_type
+    """
+    if requires_prompted_output:
+        return PromptedOutput(output_type)
+    return output_type
 
 
 # ============================================================================
@@ -1093,53 +1096,81 @@ CORRECTION_SYSTEM_PROMPT = """You are a precise editor. Given validation feedbac
 # ============================================================================
 
 
-def get_default_model():
-    """Get default model configuration (defaults to Anthropic)"""
+def get_default_model() -> ModelConfig:
+    """Get default model configuration (defaults to Anthropic with extended thinking)"""
     return get_anthropic_model()
 
 
-def get_anthropic_model():
-    """Get Anthropic Claude model configuration"""
+def get_anthropic_model(enable_thinking: bool = True) -> ModelConfig:
+    """
+    Get Anthropic Claude model configuration
+
+    Args:
+        enable_thinking: Whether to enable Anthropic's extended thinking mode (default: True)
+                        When enabled, PromptedOutput will be required instead of tool calls
+
+    Returns:
+        ModelConfig with model and requires_prompted_output flag
+    """
     if not settings.anthropic_api_key:
         raise ValueError("ANTHROPIC_API_KEY not configured in settings")
 
-    model_settings = AnthropicModelSettings(
-        max_tokens=25000,
-    )
-    return AnthropicModel(
+    if enable_thinking:
+        model_settings = AnthropicModelSettings(
+            max_tokens=25000,
+            anthropic_thinking={"type": "enabled", "budget_tokens": 1024},
+        )
+    else:
+        model_settings = AnthropicModelSettings(max_tokens=25000)
+
+    model = AnthropicModel(
         "claude-sonnet-4-5",
         provider=AnthropicProvider(api_key=settings.anthropic_api_key),
         settings=model_settings,
     )
 
+    # Anthropic with thinking enabled requires PromptedOutput
+    return ModelConfig(model=model, requires_prompted_output=enable_thinking)
 
-def get_openai_model():
-    """Get OpenAI model configuration"""
+
+def get_openai_model() -> ModelConfig:
+    """
+    Get OpenAI model configuration
+
+    Returns:
+        ModelConfig with model (doesn't require PromptedOutput)
+    """
     if not settings.openai_api_key:
         raise ValueError("OPENAI_API_KEY not configured in settings")
 
     model_settings = OpenAIResponsesModelSettings(max_tokens=25000)
-    return OpenAIResponsesModel(
+    model = OpenAIResponsesModel(
         "gpt-5",
         provider=OpenAIProvider(api_key=settings.openai_api_key),
         settings=model_settings,
     )
 
+    return ModelConfig(model=model, requires_prompted_output=False)
 
-def create_extraction_agent(model) -> Agent:
+
+def create_extraction_agent(model_config: ModelConfig) -> Agent:
     """Create extraction agent for generating markdown from documents"""
     return Agent(
-        model=model,
-        output_type=MarkdownOutput,
+        model=model_config.model,
+        output_type=wrap_output_type(
+            MarkdownOutput, model_config.requires_prompted_output
+        ),
         system_prompt=EXTRACTION_SYSTEM_PROMPT,
     )
 
 
-def create_validation_agent(model) -> Agent:
+def create_validation_agent(model_config: ModelConfig) -> Agent:
     """Create validation agent for checking markdown accuracy"""
     validator = Agent(
-        model=model,
-        output_type=ValidationResult,
+        model=model_config.model,
+        output_type=wrap_output_type(
+            ValidationResult, model_config.requires_prompted_output
+        ),
         system_prompt=VALIDATION_SYSTEM_PROMPT,
         deps_type=ValidationState,
     )
@@ -1165,11 +1196,13 @@ def create_validation_agent(model) -> Agent:
     return validator
 
 
-def create_correction_agent(model) -> Agent:
+def create_correction_agent(model_config: ModelConfig) -> Agent:
     """Create correction agent for generating search/replace operations"""
     correction_agent = Agent(
-        model=model,
-        output_type=ToolCallPlan,
+        model=model_config.model,
+        output_type=wrap_output_type(
+            ToolCallPlan, model_config.requires_prompted_output
+        ),
         system_prompt=CORRECTION_SYSTEM_PROMPT,
         deps_type=ValidationState,
     )
@@ -1218,11 +1251,15 @@ def apply_corrections(
     return current_markdown, successful_operations
 
 
-async def extract_to_pydantic(markdown: str, model) -> MolecularFindingsExtraction:
+async def extract_to_pydantic(
+    markdown: str, model_config: ModelConfig
+) -> MolecularFindingsExtraction:
     """Convert validated markdown to Pydantic model"""
     extraction_agent = Agent(
-        model=model,
-        output_type=MolecularFindingsExtraction,
+        model=model_config.model,
+        output_type=wrap_output_type(
+            MolecularFindingsExtraction, model_config.requires_prompted_output
+        ),
         system_prompt="You are a precise data parser. Convert the provided markdown representation of molecular findings into the structured MolecularFindingsExtraction model. The markdown has a nested structure where findings are grouped under reports. Each report has metadata (test_name, test_methods, specimen_type, specimen_site, tumor_content) and a list of findings. Note that test_methods is a list of strings. All findings have shared fields (finding_type, raw_text, notes) and most have origin. Use the finding_type field to determine which specific finding model to use (VariantFinding, CNAFinding, FusionFinding, IHCFinding, FISHFinding, SignatureFinding, or WildtypeFinding). CRITICAL: The models have strict validation (extra='forbid') - only include fields that are defined in the schema. Preserve all information accurately.",
     )
 
@@ -1273,17 +1310,21 @@ async def extract_molecular_findings_async(
     Raises:
         ValueError: If validation fails after max_iterations
     """
-    model = get_default_model()
+    model_config = get_default_model()
 
     print("=" * 80)
     print("🚀 Starting Molecular Findings Extraction")
+    print(f"Model: {model_config.model.__class__.__name__}")
+    print(
+        f"Output Type: {'PromptedOutput' if model_config.requires_prompted_output else 'Structured Tools'}"
+    )
     print("=" * 80)
 
     # Step 1: Generate initial markdown
     print("\n📝 Step 1: Generating initial markdown from document...")
     print("-" * 60)
 
-    extraction_agent = create_extraction_agent(model)
+    extraction_agent = create_extraction_agent(model_config)
     async with extraction_agent.run_stream(
         f"Extract molecular/genomic findings from this document:\n\n{document_text}"
     ) as result:
@@ -1313,8 +1354,8 @@ async def extract_molecular_findings_async(
     print(f"\n🔄 Step 2: Starting validation loop (max {max_iterations} iterations)")
     print("-" * 60)
 
-    validation_agent = create_validation_agent(model)
-    correction_agent = create_correction_agent(model)
+    validation_agent = create_validation_agent(model_config)
+    correction_agent = create_correction_agent(model_config)
 
     # Main validation loop
     for iteration in range(max_iterations):
@@ -1412,7 +1453,7 @@ async def extract_molecular_findings_async(
     print("\n📦 Step 3: Converting to Pydantic model...")
     print("-" * 60)
 
-    extraction = await extract_to_pydantic(state.current_markdown, model)
+    extraction = await extract_to_pydantic(state.current_markdown, model_config)
 
     total_findings = sum(len(report.findings) for report in extraction.reports)
     print(
