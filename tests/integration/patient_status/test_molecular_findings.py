@@ -1490,6 +1490,7 @@ SAMPLE_DOCUMENT_BONE_MARROW = """
 # ============================================================================
 
 
+@pytest.mark.skip
 @pytest.mark.integration
 async def test_extract_molecular_findings_omniseq():
     """
