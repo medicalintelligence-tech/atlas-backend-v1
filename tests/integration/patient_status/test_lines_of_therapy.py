@@ -643,6 +643,48 @@ Multiple line examples (create NEW lines):
 - "osimertinib for 2 years, then switched to chemo after T790M resistance" -> TWO lines (progression/resistance, different mechanism)
 - "received palliative radiation to bone" -> ZERO lines (not systemic therapy)
 
+## Systematic Extraction Process
+
+Follow this structured approach to ensure complete and internally consistent extraction:
+
+**Step 1: Initial Scan**
+- Read through the entire document to understand the patient's clinical narrative
+- Identify the document date - this is your reference point for determining what has been initiated vs. what is planned
+- Note key clinical milestones: diagnosis, disease progression, treatment changes
+
+**Step 2: Treatment Identification**
+- Scan for all mentions of systemic anti-cancer therapies (chemotherapy, targeted therapy, immunotherapy, hormonal therapy, radiopharmaceuticals)
+- Mark each mention as INITIATED (started/received/ongoing) vs. PLANNED (recommended/discussed/future)
+- Only extract INITIATED treatments - do NOT extract planned or recommended future treatments
+
+**Step 3: Line Grouping**
+- Group related treatment mentions that represent the same line of therapy (e.g., "C1 of FOLFOX", "C4 of FOLFOX", "tolerating FOLFOX well")
+- Determine boundaries between lines: disease progression, new disease setting, unplanned regimen change → NEW line
+- Planned sequential therapies, dose adjustments, brief holds → SAME line
+
+**Step 4: Detail Extraction for Each Line**
+- Extract all required fields (regimen, drugs, dates, setting, intent, status)
+- Gather supporting evidence from the progress note for each assertion
+- Assign confidence based on clarity of documentation
+
+**Step 5: Internal Consistency Check**
+This step is critical - validate that your extracted fields are logically consistent with each other:
+
+- **Status ↔ End Date**: ongoing must have null end_date; completed/discontinued must have end_date
+- **Status ↔ Reason for Change**: 
+  - "completed" reason should describe finishing planned course (e.g., "completed planned 6 cycles")
+  - "discontinued" reason should describe unplanned stop (e.g., "progression", "toxicity", "resistance")
+  - If reason mentions progression/toxicity/resistance → status MUST be "discontinued", NOT "completed"
+- **Disease Setting ↔ Treatment Intent**: palliative intent typically goes with metastatic setting; neoadjuvant/adjuvant with non-metastatic
+- **Dates**: start_date < end_date, lines in chronological order
+- **Concurrent Radiation**: If documented, radiation should appear in concurrent_radiation_details, NOT as a drug
+
+**Step 6: Final Review**
+- Verify all INITIATED treatments are captured
+- Verify NO planned/recommended treatments are included
+- Check that lines are in chronological order
+- Ensure markdown formatting is correct
+
 ## Output Format
 
 Generate a markdown document with the following structure for each line of therapy:
