@@ -45,6 +45,18 @@ from enum import Enum
 from datetime import date
 
 
+from pydantic import BaseModel, Field, field_validator, ConfigDict
+from typing import List, Optional, Union, Literal
+from enum import Enum
+from datetime import date
+
+
+from pydantic import BaseModel, Field, field_validator, ConfigDict
+from typing import List, Optional, Union, Literal
+from enum import Enum
+from datetime import date
+
+
 # ============================================================================
 # ENUMS - Only for truly limited options
 # ============================================================================
@@ -64,7 +76,8 @@ class FindingType(str, Enum):
     VARIANT = "variant"
     CNA = "cna"
     FUSION = "fusion"
-    EXPRESSION = "expression"
+    IHC = "ihc"
+    FISH = "fish"
     SIGNATURE = "signature"
     WILDTYPE = "wildtype"
 
@@ -99,9 +112,6 @@ class MolecularFindingBase(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     finding_type: FindingType = Field(description="Type of finding (discriminator)")
-    origin: Origin = Field(
-        default=Origin.UNKNOWN, description="Somatic vs germline vs unknown"
-    )
     raw_text: str = Field(
         description="Raw text from report showing this finding", min_length=1
     )
@@ -126,8 +136,11 @@ class VariantFinding(MolecularFindingBase):
         min_length=1,
     )
     canonical_variant: str = Field(
-        description="Standardized variant notation (e.g., 'G12D', 'L858R', 'exon 19 deletion', 'exon 14 skipping')",
+        description="Standardized variant notation (e.g., 'G12D', 'L858R', 'E746_A750del', 'exon 19 deletion', 'exon 14 skipping')",
         min_length=1,
+    )
+    origin: Origin = Field(
+        default=Origin.UNKNOWN, description="Somatic vs germline vs unknown"
     )
     protein_change: Optional[str] = Field(
         None, description="Protein change notation if available (e.g., 'p.G12D')"
@@ -158,6 +171,9 @@ class CNAFinding(MolecularFindingBase):
     alteration_direction: CNADirection = Field(
         description="Direction of copy number change"
     )
+    origin: Origin = Field(
+        default=Origin.UNKNOWN, description="Somatic vs germline vs unknown"
+    )
     copy_number: Optional[float] = Field(
         None, description="Absolute copy number if quantified (e.g., 8.2)"
     )
@@ -183,6 +199,10 @@ class FusionFinding(MolecularFindingBase):
         description="3' fusion partner gene (e.g., 'ALK' in EML4-ALK)",
         min_length=1,
     )
+    origin: Origin = Field(
+        default=Origin.SOMATIC,
+        description="Almost always somatic; germline fusions are extremely rare",
+    )
     fusion_type: FusionType = Field(
         default=FusionType.UNKNOWN, description="Whether fusion is in-frame"
     )
@@ -200,37 +220,111 @@ class FusionFinding(MolecularFindingBase):
     )
 
 
-class ExpressionFinding(MolecularFindingBase):
-    """Biomarker expression level (IHC, FISH, etc.)"""
+class IHCFinding(MolecularFindingBase):
+    """Immunohistochemistry protein expression"""
 
-    finding_type: Literal[FindingType.EXPRESSION] = FindingType.EXPRESSION
+    finding_type: Literal[FindingType.IHC] = FindingType.IHC
 
     biomarker: str = Field(
-        description="Biomarker name (e.g., 'HER2', 'PD-L1', 'ER', 'PR', 'AR')",
+        description="Biomarker/protein tested (e.g., 'HER2', 'ER', 'PR', 'PD-L1', 'MLH1', 'MSH2', 'AR')",
         min_length=1,
     )
-    result: str = Field(
-        description="Expression result as reported (e.g., '3+', '2+', 'positive', 'negative', '90%', 'intact', 'lost')",
-        min_length=1,
-    )
-    methodology: Optional[str] = Field(
+
+    # For HER2-style scoring (0, 1+, 2+, 3+)
+    intensity_score: Optional[int] = Field(
         None,
-        description="Test methodology (e.g., 'IHC', 'FISH', 'ISH', 'RT-PCR')",
+        description="Intensity score (0-3, where 0=negative, 1=1+, 2=2+, 3=3+)",
+        ge=0,
+        le=3,
     )
-    assay: Optional[str] = Field(
+
+    # For percentage-based results (ER, PR, PD-L1)
+    percentage_positive: Optional[float] = Field(
         None,
-        description="Specific assay used (e.g., '22C3', 'SP263', 'Ventana', 'HercepTest')",
+        description="Percentage of positive cells (0-100)",
+        ge=0.0,
+        le=100.0,
     )
+
+    # For binary results (MMR proteins, etc.)
+    is_positive: Optional[bool] = Field(
+        None,
+        description="Binary positive/negative or intact/lost",
+    )
+
+    # Staining intensity for ER/PR
+    staining_intensity: Optional[str] = Field(
+        None,
+        description="Staining intensity if reported (e.g., 'weak', 'moderate', 'strong')",
+    )
+
+    # Composite scores
+    h_score: Optional[int] = Field(
+        None,
+        description="H-score if reported (0-300)",
+        ge=0,
+        le=300,
+    )
+    allred_score: Optional[int] = Field(
+        None,
+        description="Allred score if reported (0-8)",
+        ge=0,
+        le=8,
+    )
+
+    # PD-L1 specific
     score_type: Optional[str] = Field(
         None,
-        description="Scoring system used (e.g., 'TPS', 'CPS', 'IC', 'H-score', 'Allred')",
+        description="Scoring system for PD-L1 (e.g., 'TPS', 'CPS', 'IC')",
     )
-    quantitative_value: Optional[float] = Field(
+
+    # Assay details
+    assay: Optional[str] = Field(
         None,
-        description="Numeric value if applicable (e.g., 50 for 50% TPS, 3 for 3+)",
+        description="Specific assay/antibody used (e.g., '22C3', 'SP263', 'HercepTest', '4B5')",
     )
-    quantitative_unit: Optional[str] = Field(
-        None, description="Unit for quantitative value (e.g., '%', 'ratio')"
+
+
+class FISHFinding(MolecularFindingBase):
+    """Fluorescence in situ hybridization"""
+
+    finding_type: Literal[FindingType.FISH] = FindingType.FISH
+
+    target: str = Field(
+        description="Target gene/locus (e.g., 'HER2', 'ALK', 'EGFR', 'MET')",
+        min_length=1,
+    )
+
+    # For amplification detection (HER2, MET, etc.)
+    ratio: Optional[float] = Field(
+        None,
+        description="Signal ratio if reported (e.g., HER2/CEP17 = 2.5)",
+    )
+    copy_number: Optional[float] = Field(
+        None,
+        description="Average copy number per cell if reported",
+    )
+    is_amplified: Optional[bool] = Field(
+        None,
+        description="Whether amplification detected",
+    )
+
+    # For rearrangement detection (ALK, ROS1, etc.)
+    is_rearranged: Optional[bool] = Field(
+        None,
+        description="Whether rearrangement/break-apart detected",
+    )
+    percentage_positive: Optional[float] = Field(
+        None,
+        description="Percentage of cells with positive signal (0-100)",
+        ge=0.0,
+        le=100.0,
+    )
+
+    # Reference probe
+    reference_probe: Optional[str] = Field(
+        None,
+        description="Reference probe used (e.g., 'CEP17' for HER2 FISH)",
     )
 
 
@@ -264,6 +358,10 @@ class WildtypeFinding(MolecularFindingBase):
         description="Gene confirmed as wildtype (e.g., 'KRAS', 'BRAF', 'EGFR')",
         min_length=1,
     )
+    origin: Origin = Field(
+        default=Origin.SOMATIC,
+        description="Usually checking for somatic alterations",
+    )
     alteration_type_tested: Optional[str] = Field(
         None,
         description="What was tested for (e.g., 'mutations', 'amplification', 'any alteration')",
@@ -278,7 +376,8 @@ MolecularFinding = Union[
     VariantFinding,
     CNAFinding,
     FusionFinding,
-    ExpressionFinding,
+    IHCFinding,
+    FISHFinding,
     SignatureFinding,
     WildtypeFinding,
 ]
