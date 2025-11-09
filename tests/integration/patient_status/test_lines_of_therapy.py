@@ -192,6 +192,16 @@ class LineOfTherapy(BaseModel):
         None, description="Why therapy was stopped or changed"
     )
 
+    concurrent_radiation: Optional[bool] = Field(
+        default=None,
+        description="Whether radiation therapy was given concurrently with this systemic therapy (null if not applicable or unknown)",
+    )
+
+    concurrent_radiation_details: Optional[str] = Field(
+        default=None,
+        description="Details of concurrent radiation (e.g., 'IMRT 60Gy in 15 fractions', 'SBRT 54Gy/3fx to liver', 'whole brain radiation 30Gy/10fx'). Only populate if concurrent_radiation is True.",
+    )
+
     supporting_evidence: List[str] = Field(
         default_factory=list, description="Relevant excerpts from progress notes"
     )
@@ -460,7 +470,12 @@ Immunotherapy: Progress notes say "pembrolizumab Q3 weeks" or "received dose #8"
 
 Combination regimens: List all drugs. Each drug has its own drug_class and administration_route.
 
-Concurrent chemoradiation: Extract the systemic chemotherapy as one line. Document that it was given with radiation in the notes field. Disease_setting usually locally-advanced, treatment_intent usually curative.
+Concurrent chemoradiation/immunoradiation: Extract ONLY the systemic drugs (chemotherapy/immunotherapy). Use concurrent_radiation = True and populate concurrent_radiation_details with the radiation prescription (dose, fractionation, site). DO NOT list radiation as a drug. Disease_setting usually locally-advanced, treatment_intent usually curative or neoadjuvant.
+
+Examples:
+- "completed IMRT 60Gy in 15 fractions with pembrolizumab" → concurrent_radiation: True, concurrent_radiation_details: "IMRT 60Gy in 15 fractions"
+- "SBRT 54Gy/3fx to liver with capecitabine" → concurrent_radiation: True, concurrent_radiation_details: "SBRT 54Gy in 3 fractions to liver"
+- "whole brain radiation with concurrent temozolomide" → concurrent_radiation: True, concurrent_radiation_details: "Whole brain radiation"
 
 ## Key Principles
 
@@ -570,6 +585,8 @@ Start Date: YYYY-MM-DD
 End Date: YYYY-MM-DD or null
 Status: [ongoing|completed|discontinued|null]
 Reason for Change: [reason or null]
+Concurrent Radiation: [true|false|null]
+Concurrent Radiation Details: [e.g., "IMRT 60Gy in 15 fractions" or null]
 
 Drugs:
   - Name: [drug name] | Class: [chemotherapy|targeted_therapy|immunotherapy|hormonal_therapy|radiopharmaceutical|null] | Route: [oral|intravenous|subcutaneous|intramuscular|null]
@@ -598,6 +615,7 @@ VALIDATION_SYSTEM_PROMPT = """You are a meticulous validator checking extracted 
 4. **Format Compliance**: Does the markdown follow the expected structure?
 5. **Supporting Evidence**: Are there relevant excerpts that justify the extraction?
 6. **Confidence Appropriateness**: Does the confidence score reflect the clarity of information?
+7. **Radiation Handling**: Is concurrent radiation documented in the "Concurrent Radiation" and "Concurrent Radiation Details" fields, NOT as a drug entry?
 
 ## What to Flag
 
@@ -607,6 +625,15 @@ VALIDATION_SYSTEM_PROMPT = """You are a meticulous validator checking extracted 
 - Therapies that should be combined but are separated (or vice versa)
 - Missing or weak supporting evidence
 - Formatting issues
+- **Radiation listed as a drug** (should use Concurrent Radiation fields instead)
+- Missing concurrent radiation documentation when progress note indicates radiation was given with systemic therapy
+
+## Important: Radiation Therapy Handling
+
+Lines of therapy track SYSTEMIC anti-cancer treatments only. Radiation therapy should NEVER appear in the drugs list. When radiation is given concurrently with systemic therapy:
+- Set "Concurrent Radiation: true"
+- Populate "Concurrent Radiation Details" with dose/fractionation (e.g., "IMRT 60Gy in 15 fractions")
+- List ONLY the systemic drugs (chemotherapy, immunotherapy, etc.) in the Drugs section
 
 Provide specific, actionable feedback on what needs to be corrected."""
 
@@ -1032,6 +1059,18 @@ async def test_extract_lines_of_therapy_sample_001():
     assert line2.start_date == date(2025, 1, 31)
     assert len(line2.specific_drugs) == 1  # Pembrolizumab only
 
+    # Check concurrent radiation is properly documented (IMRT 60Gy/15fx)
+    assert (
+        line2.concurrent_radiation is True
+    ), "Line 2 should have concurrent_radiation=True (IMRT given with pembrolizumab)"
+    assert (
+        line2.concurrent_radiation_details is not None
+    ), "Line 2 should have radiation details populated"
+    assert any(
+        keyword in line2.concurrent_radiation_details.lower()
+        for keyword in ["60gy", "15", "imrt", "radiation"]
+    ), f"Radiation details should mention IMRT 60Gy/15fx: {line2.concurrent_radiation_details}"
+
     print("\n" + "=" * 80)
     print("TEST PASSED - SAMPLE 001")
     print("=" * 80)
@@ -1160,13 +1199,25 @@ async def test_extract_lines_of_therapy_sample_002():
         line2.end_date is not None
     ), "Line 2 should have end date (discontinued due to progression)"
 
-    # Should have only pembrolizumab
+    # Should have only pembrolizumab (NOT radiation as a drug)
     assert (
         len(line2.specific_drugs) == 1
     ), f"Line 2 should have 1 drug (pembrolizumab monotherapy), got {len(line2.specific_drugs)}"
     assert (
         line2.specific_drugs[0].drug_class == DrugClassEnum.IMMUNOTHERAPY
     ), "Line 2 drug should be immunotherapy"
+
+    # Check concurrent radiation is properly documented
+    assert (
+        line2.concurrent_radiation is True
+    ), "Line 2 should have concurrent_radiation=True (IMRT given with pembrolizumab)"
+    assert (
+        line2.concurrent_radiation_details is not None
+    ), "Line 2 should have radiation details populated"
+    assert any(
+        keyword in line2.concurrent_radiation_details.lower()
+        for keyword in ["60gy", "15", "imrt", "radiation"]
+    ), f"Radiation details should mention IMRT 60Gy/15fx: {line2.concurrent_radiation_details}"
 
     # Check reason for change on line 2
     if line2.reason_for_change:
