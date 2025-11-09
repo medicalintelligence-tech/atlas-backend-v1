@@ -77,6 +77,15 @@ class DiagnosisStatus(str, Enum):
     RECURRENCE = "recurrence"
 
 
+class DiseaseExtent(str, Enum):
+    """Current extent/distribution of disease"""
+
+    LOCALIZED = "localized"
+    LOCALLY_ADVANCED = "locally_advanced"
+    OLIGOMETASTATIC = "oligometastatic"
+    METASTATIC = "metastatic"
+
+
 class AnatomicalSite(str, Enum):
     """Anatomical sites - used for both primary sites and metastatic sites"""
 
@@ -304,6 +313,11 @@ class BaseDiagnosis(BaseModel):
     status: Optional[DiagnosisStatus] = Field(
         default=None,
         description="Current status of the cancer. Use null if not found.",
+    )
+
+    disease_extent: Optional[DiseaseExtent] = Field(
+        default=None,
+        description="Current extent/distribution of disease. Use null if not found.",
     )
 
     disease_data: Union[SolidTumor, Hematologic, Neuroendocrine] = Field(
@@ -556,6 +570,26 @@ Use YYYY-MM-DD format. If only month/year given, use first of month (e.g., "June
 
 **If current diagnosis status is not explicitly stated in the document, use null. Do not infer.**
 
+## Disease Extent
+
+Characterize the current extent or distribution of disease based on clinical documentation:
+
+**localized**: Disease confined to the organ of origin with no regional or distant spread. Typically resectable/potentially curable. Look for terms like "early stage", "localized disease", "resectable tumor", "no evidence of metastasis", or stage I-II disease.
+
+**locally_advanced**: Extensive local or regional disease without distant metastases. Typically unresectable or borderline resectable. Look for terms like "locally advanced", "unresectable", "borderline resectable", "extensive local invasion", "bulky regional nodes", or stage III disease.
+
+**oligometastatic**: Limited metastatic disease, typically 1-5 metastatic sites, where all sites are potentially treatable with local therapy. Look for terms like "oligometastatic", "limited metastatic disease", "solitary metastasis", or explicit mention of few (≤5) metastatic sites.
+
+**metastatic**: Widely disseminated distant metastases. Look for terms like "metastatic disease", "stage IV", "distant metastases", "widely metastatic", or documentation of multiple metastatic sites.
+
+**Classification Logic**:
+- If metastatic_sites are documented → typically "metastatic" (or "oligometastatic" if explicitly described as limited)
+- If status is "recurrence" → assess current extent (may be localized recurrence or metastatic recurrence)
+- If document describes large primary with no distant spread → typically "locally_advanced"
+- If document describes early-stage resectable tumor → typically "localized"
+
+**If disease extent cannot be determined from the document, use null. Do not infer solely from presence/absence of metastatic sites without supporting clinical context.**
+
 ## Solid Tumor Specific Fields
 
 **Primary Site**: Use the anatomical site enum value. Be as specific as possible:
@@ -659,6 +693,7 @@ Type: [solid_tumor|hematologic|neuroendocrine]
 Histology: [WHO standard terminology, lowercase] or null
 Diagnosis Date: YYYY-MM-DD or null
 Status: [active|complete_remission|partial_remission|stable|progression|recurrence] or null
+Disease Extent: [localized|locally_advanced|oligometastatic|metastatic] or null
 
 ### Disease-Specific Data
 
@@ -710,13 +745,17 @@ VALIDATION_SYSTEM_PROMPT = """You are a meticulous validator checking extracted 
 2. **Histology**: Does it follow WHO terminology? Lowercase? Full terms not abbreviations?
 3. **Dates**: Is the diagnosis date accurate and in YYYY-MM-DD format?
 4. **Status**: Does the status accurately reflect the current disease state?
-5. **Disease-Specific Data**: Are all required fields present and accurate?
+5. **Disease Extent**: Is the disease extent classification appropriate?
+   - Does it match the clinical context (metastatic sites, staging, resectability)?
+   - Is it consistent with metastatic_sites field (if metastatic_sites present, extent should be metastatic/oligometastatic)?
+   - Is it based on document evidence rather than inference?
+6. **Disease-Specific Data**: Are all required fields present and accurate?
    - Solid tumors: primary_site, lesion size in MM (critical!), metastatic sites
    - Hematologic: subtype, appropriate disease burden metrics
    - Neuroendocrine: primary_site, grade, functional status
-6. **Unit Consistency**: Are all lesion measurements in millimeters (mm)?
-7. **Supporting Evidence**: Are there relevant excerpts justifying the extraction?
-8. **Confidence**: Does the score reflect extraction certainty?
+7. **Unit Consistency**: Are all lesion measurements in millimeters (mm)?
+8. **Supporting Evidence**: Are there relevant excerpts justifying the extraction?
+9. **Confidence**: Does the score reflect extraction certainty?
 
 ## What to Flag
 
@@ -725,6 +764,8 @@ VALIDATION_SYSTEM_PROMPT = """You are a meticulous validator checking extracted 
 - Lesion sizes not in millimeters (must convert cm to mm)
 - Missing required fields for the diagnosis type
 - Inaccurate dates or status
+- Disease extent inconsistent with clinical data (e.g., metastatic_sites present but extent says "localized")
+- Disease extent inferred without supporting documentation
 - Missing or insufficient supporting evidence
 - Confidence score doesn't match data quality
 - Metastases incorrectly represented as separate primary diagnoses
@@ -1267,6 +1308,7 @@ Scripps Memorial Hospital Oncology and Hematology, PLLC at The LUCILLE Packard 9
 # ============================================================================
 
 
+@pytest.mark.skip
 @pytest.mark.integration
 async def test_extract_diagnosis_sample_001():
     """Integration test for diagnosis extraction with real API - Sample 001"""
@@ -1288,6 +1330,13 @@ async def test_extract_diagnosis_sample_001():
     assert "adenocarcinoma" in diagnosis.histology.lower()
     assert diagnosis.diagnosis_date == date(2024, 8, 26)
     assert diagnosis.status == DiagnosisStatus.ACTIVE
+
+    # Check disease extent - Stage 2A treated with definitive chemoradiation (not surgery)
+    # Could be localized or locally_advanced depending on model interpretation
+    assert diagnosis.disease_extent in [
+        DiseaseExtent.LOCALIZED,
+        DiseaseExtent.LOCALLY_ADVANCED,
+    ], f"Expected localized or locally_advanced for Stage 2A non-metastatic disease, got {diagnosis.disease_extent}"
 
     # Check solid tumor specific data
     assert isinstance(diagnosis.disease_data, SolidTumor)
@@ -1316,7 +1365,6 @@ async def test_extract_diagnosis_sample_001():
     print(result.extraction.model_dump_json(indent=2))
 
 
-@pytest.mark.skip
 @pytest.mark.integration
 async def test_extract_diagnosis_sample_002():
     """
@@ -1369,6 +1417,12 @@ async def test_extract_diagnosis_sample_002():
         DiagnosisStatus.ACTIVE,
         DiagnosisStatus.PROGRESSION,
     ], "Status should be active or progression given metastatic disease"
+
+    # Check disease extent - patient has documented metastatic disease
+    assert diagnosis.disease_extent in [
+        DiseaseExtent.METASTATIC,
+        DiseaseExtent.OLIGOMETASTATIC,
+    ], f"Expected metastatic or oligometastatic for patient with adrenal and gluteal metastases, got {diagnosis.disease_extent}"
 
     # Check solid tumor specific data
     assert isinstance(
@@ -1489,8 +1543,170 @@ async def test_extract_diagnosis_sample_002():
 # write out some sample queries that you generate using the trial criteria (do for a single cohort, perhaps even use the waitlist criteria)
 
 
+# trial YO45758 ------------------------------------------
+
+# Histologically documented, locally advanced, recurrent, or metastatic incurable solid tumors
+# measurable disease
+# Confirmed presence of the RAS mutation(s)
+
+# Current participant or enrollment in another interventional clinical trial
+
+
+# db.patients.aggregate([
+#   // Stage 1: Filter for solid tumor diagnosis
+#   {
+#     $match: {
+#       "diagnoses": {
+#         $elemMatch: {
+#           "type": "solid_tumor",
+
+#           // Disease should be present (not in complete remission)
+#           "status": { $ne: "complete_remission" },
+
+#           // Must have measurable disease (>= 10mm per RECIST)
+#           "disease_data.largest_lesion.value": { $gte: 10 }
+#         }
+#       }
+#     }
+#   },
+
+#   // Stage 2: Add field to check if patient meets disease extent criteria
+#   {
+#     $addFields: {
+#       "meets_disease_criteria": {
+#         $anyElementTrue: {
+#           $map: {
+#             input: "$diagnoses",
+#             as: "dx",
+#             in: {
+#               $and: [
+#                 { $eq: ["$$dx.type", "solid_tumor"] },
+#                 { $ne: ["$$dx.status", "complete_remission"] },
+#                 {
+#                   $or: [
+#                     // Metastatic: has documented metastatic sites
+#                     { $gt: [{ $size: { $ifNull: ["$$dx.disease_data.metastatic_sites", []] } }, 0] },
+
+#                     // Recurrent: status explicitly indicates recurrence
+#                     { $eq: ["$$dx.status", "recurrence"] }
+
+#                     // Note: "locally advanced" is not objectively determinable from our model
+#                     // Would need staging information or clinical designation
+#                   ]
+#                 }
+#               ]
+#             }
+#           }
+#         }
+#       }
+#     }
+#   },
+
+#   // Stage 3: Filter for meeting disease criteria
+#   { $match: { "meets_disease_criteria": true } },
+
+#   // Stage 4: Filter for RAS mutation
+#   {
+#     $match: {
+#       "molecular_findings.reports.findings": {
+#         $elemMatch: {
+#           "finding_type": "variant",
+#           "gene": { $in: ["KRAS", "NRAS", "HRAS"] }
+#         }
+#       }
+#     }
+#   },
+
+#   // Stage 5: Exclude patients currently in interventional trials
+#   {
+#     $match: {
+#       $or: [
+#         // No lines of therapy data
+#         { "lines_of_therapy.lines_of_therapy": { $exists: false } },
+
+#         // Has therapy data but no ongoing investigational drugs
+#         {
+#           "lines_of_therapy.lines_of_therapy": {
+#             $not: {
+#               $elemMatch: {
+#                 "current_status": "ongoing",
+#                 "specific_drugs.drug_class": "investigational"
+#               }
+#             }
+#           }
+#         }
+#       ]
+#     }
+#   },
+
+#   // Optional: Project relevant fields for review
+#   {
+#     $project: {
+#       patient_id: 1,
+#       relevant_diagnosis: {
+#         $filter: {
+#           input: "$diagnoses",
+#           as: "dx",
+#           cond: {
+#             $and: [
+#               { $eq: ["$$dx.type", "solid_tumor"] },
+#               { $ne: ["$$dx.status", "complete_remission"] }
+#             ]
+#           }
+#         }
+#       },
+#       ras_mutations: {
+#         $reduce: {
+#           input: "$molecular_findings.reports",
+#           initialValue: [],
+#           in: {
+#             $concatArrays: [
+#               "$$value",
+#               {
+#                 $filter: {
+#                   input: "$$this.findings",
+#                   as: "finding",
+#                   cond: {
+#                     $and: [
+#                       { $eq: ["$$finding.finding_type", "variant"] },
+#                       { $in: ["$$finding.gene", ["KRAS", "NRAS", "HRAS"]] }
+#                     ]
+#                   }
+#                 }
+#               }
+#             ]
+#           }
+#         }
+#       },
+#       current_treatment: {
+#         $filter: {
+#           input: { $ifNull: ["$lines_of_therapy.lines_of_therapy", []] },
+#           as: "line",
+#           cond: { $eq: ["$$line.current_status", "ongoing"] }
+#         }
+#       }
+#     }
+#   }
+# ])
+
+
+# trial TODO - pickup here and do another one quickly - try a more complex one from the waitlist ------------------------------------------
+
+
+# TODO - make this into a query
+
+
 # - setup pipeline to try and do this for 10 patients and if it looks promising then do for a lot more
 
+
+# PIPELINE -------------------------
 # pipelien would be
 # - molecular profile
-# -- get documents that are
+# -- get documents that are path or genomic testing
+# -- extract molecular findings from each document
+
+# - lines of therapy
+# -- extract from current progress note
+
+# - diagnosis data
+# -- extract from current progress note
