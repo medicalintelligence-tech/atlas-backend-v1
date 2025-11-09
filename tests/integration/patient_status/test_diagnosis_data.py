@@ -1336,6 +1336,12 @@ async def test_extract_diagnosis_sample_002():
 
 # Plan
 # - setup 1 eval for lines of therapy x
-# - setup 1 eval for molecular profile - PICKUP HERE TOMORROW TODO !!!!
-# - get anthropic model working with thinking and pydantic-ai (can't force tool calls is only thing but i think instructing the model that it has too should be fine - also do PromptedOutput response type instead of just the model)
+# - setup 1 eval for molecular profile - x
+
+# - get anthropic model working with thinking and pydantic-ai (can't force tool calls is only thing but i think instructing the model that it has too should be fine - also do PromptedOutput response type instead of just the model) TODO - PICKUP HERE... if its too finnicky then move on but give it a shot
+
+
+# write out some sample queries that you generate using the trial criteria (do for a single cohort, perhaps even use the waitlist criteria)
+
+
 # - setup pipeline to try and do this for 10 patients and if it looks promising then do for a lot more

@@ -1059,8 +1059,8 @@ CORRECTION_SYSTEM_PROMPT = """You are a precise editor. Given validation feedbac
 
 
 def get_default_model():
-    """Get default model configuration (defaults to OpenAI)"""
-    return get_openai_model()
+    """Get default model configuration (defaults to Anthropic)"""
+    return get_anthropic_model()
 
 
 def get_anthropic_model():
@@ -1212,8 +1212,9 @@ async def extract_to_pydantic(markdown: str, model) -> MolecularFindingsExtracti
     """
 
     print("\n🔄 Converting markdown to Pydantic model...")
-    result = await extraction_agent.run(prompt)
-    return result.output
+    async with extraction_agent.run_stream(prompt) as result:
+        output = await result.get_output()
+    return output
 
 
 # ============================================================================
@@ -1248,10 +1249,11 @@ async def extract_molecular_findings_async(
     print("-" * 60)
 
     extraction_agent = create_extraction_agent(model)
-    result = await extraction_agent.run(
+    async with extraction_agent.run_stream(
         f"Extract molecular/genomic findings from this document:\n\n{document_text}"
-    )
-    initial_markdown = result.output.markdown.strip()
+    ) as result:
+        output = await result.get_output()
+    initial_markdown = output.markdown.strip()
 
     # Clean up any markdown formatting
     if "```markdown" in initial_markdown:
@@ -1296,8 +1298,8 @@ async def extract_molecular_findings_async(
         """
 
         print("🔍 Validating markdown...")
-        validation_result = await validation_agent.run(validation_prompt, deps=state)
-        validation_output = validation_result.output
+        async with validation_agent.run_stream(validation_prompt, deps=state) as validation_result:
+            validation_output = await validation_result.get_output()
 
         # Record validation attempt
         state.add_validation_attempt(
@@ -1325,11 +1327,12 @@ async def extract_molecular_findings_async(
         """
 
         print("\n🔧 Generating corrections...")
-        correction_result = await correction_agent.run(correction_prompt, deps=state)
-        operations = correction_result.output.operations
+        async with correction_agent.run_stream(correction_prompt, deps=state) as correction_result:
+            correction_output = await correction_result.get_output()
+        operations = correction_output.operations
 
         print(f"📝 Generated {len(operations)} correction operations")
-        print(correction_result.output.model_dump_json(indent=2))
+        print(correction_output.model_dump_json(indent=2))
 
         # Apply corrections
         print("\n⚙️  Applying corrections...")
@@ -1528,13 +1531,13 @@ async def test_extract_molecular_findings_omniseq():
     # SEPARATE FINDINGS BY TYPE
     # ============================================================================
 
-    variants = [f for f in report.findings if isinstance(f, VariantFinding)]
-    cnas = [f for f in report.findings if isinstance(f, CNAFinding)]
-    ihc_findings = [f for f in report.findings if isinstance(f, IHCFinding)]
-    fish_findings = [f for f in report.findings if isinstance(f, FISHFinding)]
-    fusions = [f for f in report.findings if isinstance(f, FusionFinding)]
-    signatures = [f for f in report.findings if isinstance(f, SignatureFinding)]
-    wildtypes = [f for f in report.findings if isinstance(f, WildtypeFinding)]
+    variants = [f for f in report.findings if f.finding_type == FindingType.VARIANT]
+    cnas = [f for f in report.findings if f.finding_type == FindingType.CNA]
+    ihc_findings = [f for f in report.findings if f.finding_type == FindingType.IHC]
+    fish_findings = [f for f in report.findings if f.finding_type == FindingType.FISH]
+    fusions = [f for f in report.findings if f.finding_type == FindingType.FUSION]
+    signatures = [f for f in report.findings if f.finding_type == FindingType.SIGNATURE]
+    wildtypes = [f for f in report.findings if f.finding_type == FindingType.WILDTYPE]
 
     # ============================================================================
     # VALIDATE VARIANTS (SOMATIC MUTATIONS)
@@ -1813,6 +1816,323 @@ async def test_extract_molecular_findings_omniseq():
     print("• TMB-High (18.9 mut/Mb): May benefit from immune checkpoint inhibitors")
     print("• PD-L1 TPS 1%: Low expression, but TMB-high supports immunotherapy")
     print("• MTAP/CDKN2A deletions: Cell cycle pathway alterations")
+    print("=" * 80)
+
+    print("\nFull extraction:")
+    print(result.extraction.model_dump_json(indent=2))
+
+
+@pytest.mark.integration
+async def test_extract_molecular_findings_bone_marrow():
+    """
+    Integration test for molecular findings extraction - Bone Marrow Aspirate with MDS
+
+    Clinical scenario: 75-year-old woman with therapy-related myeloid neoplasm (MDS)
+    with biallelic TP53 inactivation and 11q deletion undergoing surveillance bone marrow biopsy.
+
+    Key features to validate:
+    - Test report metadata (NeoTYPE NGS panel, cytogenetics, FISH, bone marrow specimen)
+    - Variant: TP53 Y234N (c.700T>A, VAF 14.0%)
+    - CNA: del(11)(q13q23) - chromosomal region deletion from cytogenetics
+    - CNA: KMT2A (MLL) loss at 11q23 from FISH (54.5% of nuclei)
+    - Pertinent negatives documented: FLT3, IDH1, IDH2, NPM1
+    - Clinical context: Biallelic TP53 inactivation (mutation + copy loss)
+    """
+    # Run extraction
+    result = await extract_molecular_findings_async(
+        SAMPLE_DOCUMENT_BONE_MARROW, max_iterations=3
+    )
+
+    # Verify result success
+    assert result.success is True, "Extraction should complete successfully"
+    assert (
+        result.extraction is not None
+    ), "Extraction should contain molecular findings data"
+
+    # Should have one main report (may be reported as single comprehensive report with multiple methods)
+    assert len(result.extraction.reports) >= 1, "Should have at least one test report"
+
+    report = result.extraction.reports[0]
+
+    # ============================================================================
+    # VALIDATE REPORT METADATA
+    # ============================================================================
+
+    # Test name should reference NeoTYPE, NeoGenomics, or molecular profiling
+    assert report.test_name is not None, "Test name should be documented"
+    test_name_lower = report.test_name.lower()
+    assert (
+        "neotype" in test_name_lower
+        or "neogenomics" in test_name_lower
+        or "aml" in test_name_lower
+        or "molecular" in test_name_lower
+    ), f"Test name should reference NeoTYPE/NeoGenomics/molecular testing, got: {report.test_name}"
+
+    # Test methods should include NGS, Cytogenetics, and FISH
+    assert len(report.test_methods) >= 1, "Should document at least one test method"
+    test_methods_str = " ".join(report.test_methods).upper()
+    assert (
+        "NGS" in test_methods_str
+        or "SEQUENCING" in test_methods_str
+        or "MOLECULAR" in test_methods_str
+    ), f"Should include NGS/sequencing method, got: {report.test_methods}"
+
+    # Specimen should be bone marrow
+    assert report.specimen_type is not None, "Specimen type should be documented"
+    specimen_type_lower = report.specimen_type.lower()
+    assert (
+        "bone marrow" in specimen_type_lower or "marrow" in specimen_type_lower
+    ), f"Specimen type should be bone marrow, got: {report.specimen_type}"
+
+    # Specimen site should reference bone marrow source (posterior iliac crest if captured)
+    # This may be null if not explicitly stated, but if present should be anatomically correct
+    if report.specimen_site:
+        specimen_site_lower = report.specimen_site.lower()
+        # Could be "bone marrow", "posterior iliac crest", etc.
+        assert (
+            "marrow" in specimen_site_lower
+            or "iliac" in specimen_site_lower
+            or "aspirate" in specimen_site_lower
+        ), f"Specimen site should reference bone marrow location, got: {report.specimen_site}"
+
+    # Should have multiple findings (at least TP53 variant + CNAs)
+    assert (
+        len(report.findings) >= 3
+    ), f"Should have at least 3 findings (TP53 variant + 2 CNAs minimum), got {len(report.findings)}"
+
+    # ============================================================================
+    # SEPARATE FINDINGS BY TYPE
+    # ============================================================================
+
+    variants = [f for f in report.findings if f.finding_type == FindingType.VARIANT]
+    cnas = [f for f in report.findings if f.finding_type == FindingType.CNA]
+    ihc_findings = [f for f in report.findings if f.finding_type == FindingType.IHC]
+    fish_findings = [f for f in report.findings if f.finding_type == FindingType.FISH]
+    fusions = [f for f in report.findings if f.finding_type == FindingType.FUSION]
+    signatures = [f for f in report.findings if f.finding_type == FindingType.SIGNATURE]
+    wildtypes = [f for f in report.findings if f.finding_type == FindingType.WILDTYPE]
+
+    # ============================================================================
+    # VALIDATE VARIANTS (TP53 MUTATION)
+    # ============================================================================
+
+    # Should have at least 1 variant (TP53 Y234N)
+    assert (
+        len(variants) >= 1
+    ), f"Should extract at least 1 variant (TP53), got {len(variants)}"
+
+    # Check TP53 Y234N variant
+    tp53 = next((v for v in variants if v.gene.upper() == "TP53"), None)
+    assert tp53 is not None, "TP53 variant should be extracted"
+    assert (
+        "Y234N" in tp53.canonical_variant
+    ), f"TP53 variant should be Y234N, got: {tp53.canonical_variant}"
+
+    # Origin should be somatic (this is therapy-related MDS)
+    assert (
+        tp53.origin == Origin.SOMATIC
+    ), f"TP53 should be somatic in therapy-related MDS, got: {tp53.origin}"
+
+    # Check cDNA change if captured
+    if tp53.cdna_change:
+        assert (
+            "700T>A" in tp53.cdna_change or "c.700" in tp53.cdna_change
+        ), f"TP53 cDNA change should be c.700T>A, got: {tp53.cdna_change}"
+
+    # Check VAF
+    assert tp53.variant_frequency is not None, "TP53 VAF should be documented"
+    assert (
+        abs(tp53.variant_frequency - 0.14) < 0.01
+    ), f"TP53 VAF should be ~0.14 (14%), got: {tp53.variant_frequency}"
+
+    # ============================================================================
+    # VALIDATE COPY NUMBER ALTERATIONS
+    # ============================================================================
+
+    # Should have at least 1-2 CNAs (11q deletion from cytogenetics and/or KMT2A loss from FISH)
+    # Note: The cytogenetics shows del(11)(q13q23) and FISH shows KMT2A loss at 11q23
+    # These could be reported as one or two findings depending on how model interprets
+    assert (
+        len(cnas) >= 1
+    ), f"Should extract at least 1 copy number alteration (11q deletion), got {len(cnas)}"
+
+    # Check for 11q deletion (either as chromosomal region or KMT2A gene-specific)
+    # Could be reported as "11q13-q23" (cytogenetics) or "KMT2A" (FISH)
+    deletion_11q = next(
+        (c for c in cnas if "11q" in c.gene or c.gene.upper() in ["KMT2A", "MLL"]), None
+    )
+    assert deletion_11q is not None, "11q deletion or KMT2A loss should be extracted"
+    assert (
+        deletion_11q.alteration_direction == CNADirection.DELETION
+        or deletion_11q.alteration_direction == CNADirection.LOSS
+    ), f"11q/KMT2A should be deletion or loss, got: {deletion_11q.alteration_direction}"
+
+    # If reported as chromosomal region, should use band notation
+    if "q" in deletion_11q.gene.lower() and "11" in deletion_11q.gene:
+        assert (
+            "11q" in deletion_11q.gene
+        ), f"Chromosomal deletion should use band notation like 11q13-q23, got: {deletion_11q.gene}"
+        # Should note it's from cytogenetics
+        if deletion_11q.notes:
+            assert (
+                "cytogenetic" in deletion_11q.notes.lower()
+                or "karyotype" in deletion_11q.notes.lower()
+                or "region" in deletion_11q.notes.lower()
+            ), f"Chromosomal CNA should note source in notes, got: {deletion_11q.notes}"
+
+    # If reported as KMT2A, should be gene-specific
+    if deletion_11q.gene.upper() in ["KMT2A", "MLL"]:
+        # Should note it's from FISH if captured
+        if deletion_11q.notes:
+            assert (
+                "fish" in deletion_11q.notes.lower()
+                or "gene" in deletion_11q.notes.lower()
+            ), f"Gene-specific CNA should note FISH source, got: {deletion_11q.notes}"
+
+    # ============================================================================
+    # VALIDATE FISH FINDINGS (KMT2A/MLL)
+    # ============================================================================
+
+    # The KMT2A loss could be reported as:
+    # 1. A CNA finding (loss/deletion of KMT2A gene)
+    # 2. A FISH finding (abnormal FISH signal pattern)
+    # Either is acceptable depending on interpretation
+
+    # If extracted as FISH finding:
+    if len(fish_findings) > 0:
+        kmt2a_fish = next(
+            (
+                f
+                for f in fish_findings
+                if "KMT2A" in f.target.upper() or "MLL" in f.target.upper()
+            ),
+            None,
+        )
+        if kmt2a_fish:
+            # Should not show rearrangement (report says "not detected")
+            assert (
+                kmt2a_fish.is_rearranged is None or kmt2a_fish.is_rearranged is False
+            ), f"KMT2A rearrangement should be negative, got: {kmt2a_fish.is_rearranged}"
+
+            # May capture percentage with abnormal signal (54.5%)
+            if kmt2a_fish.percentage_positive:
+                assert (
+                    abs(kmt2a_fish.percentage_positive - 54.5) < 1.0
+                ), f"KMT2A FISH abnormal signal should be ~54.5%, got: {kmt2a_fish.percentage_positive}"
+
+    # ============================================================================
+    # VALIDATE WILDTYPE/NEGATIVE FINDINGS
+    # ============================================================================
+
+    # Report documents pertinent negatives: FLT3, IDH1, IDH2, NPM1
+    # These may or may not be extracted as wildtype findings
+
+    if len(wildtypes) > 0:
+        print(f"✓ Found {len(wildtypes)} wildtype findings (pertinent negatives)")
+
+        # If extracted, should include some of: FLT3, IDH1, IDH2, NPM1
+        wildtype_genes = [wt.gene.upper() for wt in wildtypes]
+        pertinent_negatives = ["FLT3", "IDH1", "IDH2", "NPM1"]
+        found_negatives = [
+            gene for gene in pertinent_negatives if gene in wildtype_genes
+        ]
+
+        if found_negatives:
+            print(f"  Documented negatives: {', '.join(found_negatives)}")
+
+    # ============================================================================
+    # VALIDATE RAW TEXT AND EVIDENCE
+    # ============================================================================
+
+    # All findings should have raw_text
+    for finding in report.findings:
+        assert (
+            finding.raw_text
+        ), f"Finding of type {finding.finding_type} should have raw_text"
+        assert (
+            len(finding.raw_text) > 0
+        ), f"Raw text should not be empty for {finding.finding_type}"
+
+    # ============================================================================
+    # CLINICAL SUMMARY OUTPUT
+    # ============================================================================
+
+    print("\n" + "=" * 80)
+    print("TEST PASSED - BONE MARROW MDS WITH BIALLELIC TP53 INACTIVATION")
+    print("=" * 80)
+    print(f"\nTest Report:")
+    print(f"  Name: {report.test_name}")
+    print(f"  Methods: {', '.join(report.test_methods)}")
+    print(
+        f"  Specimen: {report.specimen_type}"
+        + (f" from {report.specimen_site}" if report.specimen_site else "")
+    )
+    if report.tumor_content:
+        print(f"  Tumor Content: {report.tumor_content}%")
+
+    print(f"\nFindings Summary ({len(report.findings)} total):")
+
+    if len(variants) > 0:
+        print(f"  ├─ Variants: {len(variants)}")
+        for v in variants:
+            vaf_str = (
+                f", VAF: {v.variant_frequency*100:.1f}%" if v.variant_frequency else ""
+            )
+            print(f"  │  └─ {v.gene} {v.canonical_variant} ({v.origin.value}{vaf_str})")
+
+    if len(cnas) > 0:
+        print(f"  ├─ Copy Number Alterations: {len(cnas)}")
+        for c in cnas:
+            notes_str = f" ({c.notes})" if c.notes else ""
+            print(f"  │  └─ {c.gene} {c.alteration_direction.value}{notes_str}")
+
+    if len(fish_findings) > 0:
+        print(f"  ├─ FISH: {len(fish_findings)}")
+        for f in fish_findings:
+            print(f"  │  └─ {f.target}")
+
+    if len(signatures) > 0:
+        print(f"  ├─ Signatures: {len(signatures)}")
+        for s in signatures:
+            quant_str = (
+                f" ({s.quantitative_value} {s.unit})" if s.quantitative_value else ""
+            )
+            print(f"  │  └─ {s.signature_type.value}: {s.result}{quant_str}")
+
+    if len(ihc_findings) > 0:
+        print(f"  ├─ IHC: {len(ihc_findings)}")
+        for i in ihc_findings:
+            if i.percentage_positive is not None:
+                print(f"  │  └─ {i.biomarker}: {i.percentage_positive}%")
+            elif i.intensity_score is not None:
+                print(f"  │  └─ {i.biomarker}: {i.intensity_score}+")
+            else:
+                print(f"  │  └─ {i.biomarker}")
+
+    if len(fusions) > 0:
+        print(f"  ├─ Fusions: {len(fusions)}")
+        for fusion in fusions:
+            print(f"  │  └─ {fusion.gene_5prime}-{fusion.gene_3prime}")
+
+    if len(wildtypes) > 0:
+        print(f"  └─ Wildtype/Negative: {len(wildtypes)}")
+        for wt in wildtypes:
+            print(f"     └─ {wt.gene} (no alterations detected)")
+
+    print("\n" + "=" * 80)
+    print("CLINICAL IMPLICATIONS")
+    print("=" * 80)
+    print("• TP53 Y234N mutation: Pathogenic, associated with poor prognosis in MDS")
+    print(
+        "• Biallelic TP53 inactivation: Mutation + 11q copy loss (very poor prognosis)"
+    )
+    print("• 11q deletion (del(11)(q13q23)): Involves KMT2A/MLL gene region")
+    print(
+        "• KMT2A (MLL) loss by FISH: Confirms deletion at gene level (54.5% of cells)"
+    )
+    print("• Therapy-related MDS: Secondary to prior breast cancer treatment")
+    print("• Blast count: 3% (morphology) / 6% (CD34 IHC) - below AML threshold")
+    print("• Pertinent negatives: FLT3, IDH1, IDH2, NPM1 wildtype")
     print("=" * 80)
 
     print("\nFull extraction:")
