@@ -1397,51 +1397,51 @@ async def extract_molecular_findings_async(
 # SAMPLE DATA
 # ============================================================================
 
-SAMPLE_DOCUMENT = """
-<figure> 3 PatientKeeper\u00ae </figure> Printed: 10/11/24 12:46 By: Coppick, Casey MD # BONE MARROW ASPIRATE SCHOMP, GIOVANNA Age: 76Y Gender: F DOB: 10/05/1948 MRN: N40711076 Phone: Date/Time 06/24/24 11:22 Status Signed Source Fawcett Memorial Hospital BONE MARROW ASPIRATE RUN DATE: 07/15/24 Fawcett Memorial Hospital RUN TIME: 8241 Howard County General Hospital RUN USER: Tanner Health System, Lahey Hospital Banner Estrella Medical Center, Lahey Hospital SAROYAN ST, NYU Langone Hospital 2703 FRANCONIA DRIVE GIBBON, NEW MEXICO 12094 (287)106-8560 NAME: SCHOMP,GIOVANNA LOC: MR#: N40711076 ACCT#: D616052344 DOB: 10/05/48 AGE/SEX:75/F REG: 06/24/24 ATTEND DR: Vanwell, Adrik D MD STATUS: DEP CLI DIS: Collection Date: 06/24/24 Received Date: 06/24/24 Pathology Number: WM:A66-48657 Submitting Doctor: Vanwell, Adrik D MD ** CONTINUED ON NEXT PAGE ** RUN DATE: 07/15/24 Fawcett Memorial Hospital RUN TIME: 8241 Howard County General Hospital RUN USER: Tanner Health System, Lahey Hospital Inova Fairfax Hospital PABLO ROAD RD, NYU Langone Hospital 2703 FRANCONIA DRIVE GIBBON, NEW MEXICO 12094 (287)106-8560 NAME: SCHOMP,GIOVANNA LOC: MR#: N40711076 ACCT#: D616052344 DOB: 10/05/48 AGE/SEX:75/F REG: 06/24/24 ATTEND DR: Vanwell,Adrik D MD STATUS: DEP CLI DIS: Collection Date: 06/24/24 Received Date: 06/24/24 Pathology Number: WM:A66-48657 Submitting Doctor: Vanwell, Adrik D MD CLINICAL HISTORY Our patient is a 75-year-old woman with a history of breast cancer and therapy related myeloid neoplasm (MDS) displaying monoallelic TP53 and -11q undergoing surveillance bone marrow biopsy evaluation. ADDENDUM FINDINGS NeoTYPE(TM) Analysis AML Prognostic Profile SPECIMEN TYPE: Bone Marrow BODY SITE: Bone Marrow RESULTS SUMMARY: SNVs/Indels TP53 Y234N PERTINENT NEGATIVES: NO alterations detected in the following genes: FLT3, IDH1, IDH2, NPM1 <!-- PageNumber=\"Page 1 of 7\" --> <!-- PageBreak --> <figure> 3 PatientKeeper\u00ae </figure> Printed: 10/11/24 12:46 By: Coppick, Casey MD # BONE MARROW ASPIRATE SCHOMP, GIOVANNA Age: 76Y Gender: F DOB: 10/05/1948 MRN: N40711076 Phone: Date/Time 06/24/24 11:22 Status Signed Source Fawcett Memorial Hospital INTERPRETATION A single TP53 mutation with evidence of TP53 copy number loss indicates \"biallelic TP53 inactivation\" and is associated with a very poor prognosis. A complex karyotype may be regarded as presumptive evidence of TP53 copy loss on the trans allele. A VAF >10% with 10-19% blasts is classified as MDS with mutated TP53; TP53 VAF >10% with at least 20% blasts is consistent with AML with mutated TP53. Molecular Testing Detail 1\\. TP53 - p.Y234N; c .. 700T>A - NM_000546.5 - VAF 14.0% For additional details, please refer to the full report provided by NeoGenomics Laboratories. TEST RESULTS BY Montgomery General Hospital AFB/tm 07/09/24 Cytogenetics Oncology Chromosome Analysis ** CONTINUED ON NEXT PAGE ** RUN DATE: 07/15/24 Fawcett Memorial Hospital RUN TIME: 8241 Howard County General Hospital RUN USER: Lahey Hospital RIANA, Lahey Hospital Saint Peter's University Hospital Summerlin Hospital, Lahey Hospital SAROYAN ST, NYU Langone Hospital 2703 FRANCONIA DRIVE GIBBON, NEW MEXICO 12094 (287)106-8560 NAME: SCHOMP,GIOVANNA LOC: MR#: N40711076 ACCT#: D616052344 DOB: 10/05/48 AGE/SEX:75/F REG: 06/24/24 ATTEND DR: Vanwell, Adrik D MD STATUS: DEP CLI DIS: Collection Date: 06/24/24 Received Date: 06/24/24 Pathology Number: BZ:B79-36840 Submitting Doctor: Vanwell, Adrik D MD ADDENDUM FINDINGS: (Continued) SPECIMEN TYPE: Bone Marrow BODY SITE: Bone Marrow KARYOTYPE: 46,XX,del(11)(q13q23)[13]/46,XX[7] INTERPRETATION: ABNORMAL FEMALE KARYOTYPE - DELETION of 11q, AS PREVIOUSLY REPORTED Cytogenetic analysis shows an abnormal female karyotype. Thirteen cells show a deletion of <!-- PageNumber=\"Page 2 of 7\" --> <!-- PageBreak --> <figure> 2 <!-- PageHeader=\"PatientKeeper\u00ae\" --> </figure> Printed: 10/11/24 12:46 By: Coppick, Casey MD # BONE MARROW ASPIRATE SCHOMP, GIOVANNA Age: 76Y Gender: F DOB: 10/05/1948 MRN: N40711076 Phone: Date/Time 06/24/24 11:22 Status Signed Source Fawcett Memorial Hospital the long arm of chromosome 11 and seven cells show a normal karyotype. Deletion of 11q is observed in MDS and is considered an indicator of very good prognosis. This finding was reported in a previous specimen (see NeoTRACK Results below), suggesting clonal persistence. These results should be interpreted in conjunction with clinical and other laboratory findings. For additional details, please refer to the full report provided by Montgomery General Hospital. TEST RESULTS BY Henry Ford Hospital LABORATORIES AFB/bs/CL/rc/AFB/ctm 07/06/24-07/11/24 Addendum Electronically signed Ege J Galba, MD 07/15/24 1547 FISH Analysis Multiple Probe Panel Results: Abnormal Interpretation: 11q23 KMT2A (MLL) rearrangement: Not Detected KMT2A (11q23) loss: Detected Del(17p): Not Detected Fluorescence in situ hybridization (FISH) analysis was performed using a dual color KMT2A (MLL) break apart probe set to detect rearrangement of the KMT2A (MLL) gene locus reported ** CONTINUED ON NEXT PAGE ** RUN DATE: 07/15/24 Fawcett Memorial Hospital RUN TIME: 8241 Howard County General Hospital RUN USER: Lahey Hospital Front Royal Warren Memorial Hospital, Lahey Hospital Saint Peter's University Hospital Craig Hospital SAROYAN ST, NYU Langone Hospital 2703 FRANCONIA DRIVE GIBBON, NEW MEXICO 12094 (287)106-8560 NAME: SCHOMP,GIOVANNA JAYNI: MR#: N40711076 ACCT#: D616052344 DOB: 10/05/48 AGE/SEX:75/F REG: 06/24/24 ATTEND DR: Vanwell, Adrik D MD STATUS: DEP CLI DIS: Collection Date: 06/24/24 Received Date: 06/24/24 Pathology Number: WM:B79-36840 Submitting Doctor: Vanwell, Adrik D MD ADDENDUM FINDINGS: (Continued) in B-cell acute lymphoblastic leukemia (B-ALL). The abnormal signal pattern (1F) was observed in 54.5% of the analyzed nuclei. The normal reference range is < 3.1% and as such, this represents an ABNORMAL result indicative of loss of the KMT2A (MLL) gene region on chromosome 11 or loss of chromosome 11. Counts for the other probes are within the normal limits. For further information please reference the complete outside NeoGenomics report (QSY59-747010). PR/PR <!-- PageNumber=\"Page 3 of 7\" --> <!-- PageBreak --> <figure> 3 PatientKeeper </figure> Printed: 10/11/24 12:46 By: Coppick, Casey MD ## BONE MARROW ASPIRATE SCHOMP, GIOVANNA Age: 76Y Gender: F DOB: 10/05/1948 MRN: N40711076 Phone: Date/Time 06/24/24 11:22 Status Signed Source Fawcett Memorial Hospital 7/04/24 Addendum Electronically signed FINAL DIAGNOSIS Adrik I Farhat, MD 07/04/24 0828 A. BONE MARROW CORE BIOPSY, ASPIRATE SMEARS, TOUCH IMPRINTS, CLOT SECTIONS: \\- NORMAL CELLULAR MARROW (20-25% CELLULAR) WITH TRILINEAGE HEMATOPOIESIS. \\- NO CONVINCING MORPHOLOGIC EVIDENCE OF HEMATOLYMPHOID NEOPLASM OR MYELODYSPLASIA. \\- 3% BLASTS BY MORPHOLOGY; 6% BY CD34 IHC. \\- PENDING CYTOGENIC, FISH, AND MOLECULAR STUDIES. \\- MILDLY INCREASED STORAGE IRON BY SPECIAL STAIN. \\- SEE COMMENT. COMMENT: Histologic evaluation paired with immunohistochemical stains and flow cytometric analysis reveals a normal cellular and well-organized trilineage hematopoietic marrow with no convincing evidence of increased blast forms, myelodysplasia related change, or progression to acute leukemia. Pending cytogenic, FISH, and molecular studies will be reported in addendum to follow. AFB/ra 06/27/24 (1) GROSS DESCRIPTION A. Received in formalin labeled \"bone marrow aspirate\" is a 1.7 x 0.7 x 0.7 cm fragment of clotted blood. The specimen is sectioned and entirely submitted in cassette A1. B. Received in formalin labeled \"bone marrow biopsy\" are three pink tan trabecular bone ** CONTINUED ON NEXT PAGE ** RUN DATE: 07/15/24 Fawcett Memorial Hospital RUN TIME: 8241 Howard County General Hospital RUN USER: Lahey Hospital Front Royal Warren Memorial Hospital, Lahey Hospital Inspira Medical Center SAROYAN ST, NYU Langone Hospital 2703 FRANCONIA DRIVE GIBBON, NEW MEXICO 12094 (287)106-8560 NAME: SCHOMP,GIOVANNA LOC: MR#: N40711076 ACCT#: D616052344 DOB: 10/05/48 AGE/SEX:75/F REG: 06/24/24 ATTEND DR: Vanwell, Adrik D MD STATUS: DEP CLI DIS: Collection Date: 06/24/24 Received Date: 06/24/24 Pathology Number: :B79-36840 Submitting Doctor: Vanwell, Adrik D MD GROSS DESCRIPTION: (Continued) core biopsy specimens ranging from 0.3 to 1.3 cm in length (diameter 2 mm). The specimen is submitted in toto in cassette B1 following bone marrow decalcification protocol. CMS/gs 06/24/24 MICROSCOPIC DESCRIPTION BONE MARROW ASPIRATE EVALUATION: Contents: Received for morphologic review are five aspirate smears including one stain for iron, two touch imprints, three sections of clot, and three sections of core biopsy. Cellularity: Spicular and cellular; adequate. <!-- PageNumber=\"Page 4 of 7\" --> <!-- PageBreak --> <figure> 3 PatientKeeper\u00ae </figure> Printed: 10/11/24 12:46 By: Coppick, Casey MD # BONE MARROW ASPIRATE SCHOMP, GIOVANNA Age: 76Y Gender: F DOB: 10/05/1948 MRN: N40711076 Phone: Date/Time 06/24/24 11:22 Status Signed Source Fawcett Memorial Hospital M/E ratio: 1.5. Iron Stain: Mildly increased storage iron; no ringed sideroblasts identified. DIFFERENTIAL COUNT: <table> <tr> <th>NORMAL %</th> <th>CELL TYPE</th> <th></th> <th></th> <th></th> <th colspan=\"2\">%</th> </tr> <tr> <td>0-5</td> <td>BLASTS</td> <td>3</td> <td></td> <td></td> <td colspan=\"2\"></td> </tr> <tr> <td>1-8</td> <td colspan=\"3\">PROMYELOCYTES</td> <td colspan=\"3\">1.8</td> </tr> <tr> <td>6-23</td> <td>MYELOCYTES</td> <td colspan=\"2\"></td> <td colspan=\"3\">11.2</td> </tr> <tr> <td>13-32</td> <td colspan=\"3\">METAMYELOCYTES</td> <td colspan=\"3\">13.6</td> </tr> <tr> <td>7-30</td> <td>MATURE NEUTROPHILS</td> <td colspan=\"2\"></td> <td></td> <td colspan=\"2\">23</td> </tr> <tr> <td>1-5</td> <td>MATURE EOSINOPHILS</td> <td colspan=\"2\"></td> <td></td> <td colspan=\"2\">2.2</td> </tr> <tr> <td>0-1</td> <td>MATURE BASOPHILS</td> <td colspan=\"2\"></td> <td colspan=\"3\">0</td> </tr> <tr> <td>1-5</td> <td>MONOCYTES</td> <td colspan=\"2\"></td> <td>1.2</td> <td colspan=\"2\"></td> </tr> <tr> <td>3-23</td> <td>LYMPHOCYTES</td> <td colspan=\"2\"></td> <td></td> <td colspan=\"2\">8</td> </tr> <tr> <td>0-4</td> <td>PLASMA CELLS</td> <td colspan=\"2\"></td> <td>0</td> <td colspan=\"2\"></td> </tr> <tr> <td>1-8</td> <td>PRONORMOBLASTS</td> <td colspan=\"2\"></td> <td></td> <td colspan=\"2\">6.8</td> </tr> <tr> <td>7-34</td> <td colspan=\"3\">NORMOBLASTS</td> <td></td> <td>29.2</td> <td></td> </tr> </table> Differential performed on 500 cells from the aspirate smear. MORPHOLOGY: Erythroids: Relative erythroid hyperplasia with predominance of polychromatophilic forms. ** CONTINUED ON NEXT PAGE ** RUN DATE: 07/15/24 Fawcett Memorial Hospital RUN TIME: 8241 Howard County General Hospital RUN USER: Lahey Hospital RIANA, Lahey Hospital Saint Peter's University Hospital Craig Hospital SAROYAN ST, NYU Langone Hospital 2703 FRANCONIA DRIVE GIBBON, NEW MEXICO 12094 (287)106-8560 NAME: SCHOMP,GIOVANNA LOC: MR#: N40711076 ACCT#: D616052344 DOB: 10/05/48 AGE/SEX:75/F REG: 06/24/24 ATTEND DR: Vanwell, Adrik D MD STATUS: DEP CLI DIS: Collection Date: 06/24/24 Received Date: 06/24/24 Pathology Number: WM:B79-36840 Submitting Doctor: Vanwell, Adrik D MD MICROSCOPIC DESCRIPTION: (Continued) Myeloids: Appropriate full spectrum maturation with slight left shift lacking evidence of increased blast forms or convincing dysplastic change. Megakaryocytes: Scattered with occasional immature hypolobated forms. Others: Frequent macrophages. TOUCH IMPRINTS: Morphologically similar in cellular composition to the aspirate smear displaying trilineage hematopoietic elements with left shifted myeloid precursors lacking evidence of increased <!-- PageNumber=\"Page 5 of 7\" --> <!-- PageBreak --> <figure> 2 <!-- PageHeader=\"Patroller\" --> </figure> Printed: 10/11/24 12:46 By: Coppick, Casey MD # BONE MARROW ASPIRATE SCHOMP, GIOVANNA Age: 76Y Gender: F DOB: 10/05/1948 MRN: N40711076 Phone: Date/Time 06/24/24 11:22 Status Signed Source Fawcett Memorial Hospital blast forms or convincing dysplastic change. BONE MARROW CORE BIOPSY AND CLOT SECTION EVALUATION: Quality: Adequate bone marrow core biopsy (14 mm/18 mm) and clot section with few marrow particles. Microscopic Description: Histologic sections reveal a normal cellular marrow (20-25% cellular) with somewhat patchy, but well-organized trilineage hematopoietic elements displaying background erythroid hyperplasia and scattered hemosiderin deposition lacking convincing evidence of myelodysplastic syndrome, increased blasts, or malignancy. Immunohistochemical stains performed at Fawcett Memorial Hospital Laboratory with appropriate reactive controls on block B1 displays slightly increased CD34-positive myeloblasts comprising approximately 6% of the total bone marrow cellularity by CD34 IHC with partial coexpression of CD117. CD61 highlights scattered appropriate quantities of megakaryocytes. Special stain performed at Fawcett Memorial Hospital Laboratory with appropriate reactive controls on block B1 displays no significant reticulin fibrosis by special stain (MF 0/3). Flow cytometry performed at Fawcett Memorial Hospital Laboratory with appropriate quality metrics on the bone marrow aspirate specimen displays no evidence of increased blast forms or acute leukemia. For additional details, please see the full report (A66-69750). IMMUNOSTAIN REFERENCE: These tests were developed and their performance characteristics determined by Fawcett Memorial Hospital. It has not been cleared or approved by the U.S. Food and Drug Administration. The FDA has determined that such clearance or approval is not necessary. These tests are used for clinical purposes. They should not be regarded as investigational or for research. The laboratory is certified under the Clinical Laboratory Improvement Amendments of 1988 (CLIA) as qualified to perform high complexity clinical laboratory testing. ** CONTINUED ON NEXT PAGE ** RUN DATE: 07/15/24 Fawcett Memorial Hospital RUN TIME: 8241 Howard County General Hospital RUN USER: Tanner Health System, Lahey Hospital Banner Estrella Medical Center, METHODIST SHAFTER TER, NYU Langone Hospital 2703 FRANCONIA DRIVE GIBBON, NEW MEXICO 12094 (287)106-8560 NAME: SCHOMP,GIOVANNA LOC: MR#: N40711076 ACCT#: D616052344 DOB: 10/05/48 AGE/SEX:75/F REG: 06/24/24 ATTEND DR: Vanwell, Adrik D MD STATUS: DEP CLI DIS: Collection Date: 06/24/24 Received Date: 06/24/24 Pathology Number: WM:B79-36840 Submitting Doctor: Vanwell, Adrik D MD MICROSCOPIC DESCRIPTION: (Continued) REFERENCES: 1\\. Department of Health and Human Services, Food and Drug Administration. Medical devices: classification/reclassification; restricted devices; analyte specific reagents. Final rule. Federal register. 1977 (Nov. 10);62243 {21CFR809 and <!-- PageNumber=\"Page 6 of 7\" --> <!-- PageBreak --> <figure> 2 PatientKeeper </figure> Printed: 10/11/24 12:46 By: Coppick, Casey MD # BONE MARROW ASPIRATE SCHOMP, GIOVANNA Age: 76Y Gender: F DOB: 10/05/1948 MRN: N40711076 Phone: Date/Time 06/24/24 11:22 864}. Status Signed Source Fawcett Memorial Hospital 2\\. Jerrod CR. FDA issues final rule for classification and reclassification of immunochemistry reagents and kits. Am J Clin Pathol. 1999;111:443-470. 3\\. Swanson PE. Labels, disclaimer, and rules (oh, my!). Am J Clin Pathol. 1999;111:580-886. AFB/ra 06/27/24 <table> <tr> <td>Electronically signed by</td> <td>Ege J Galba, MD</td> <td>06/28/24 1650</td> </tr> <tr> <td>Electronically signed by</td> <td>Adrik I Farhat, MD</td> <td>07/04/24 0844</td> </tr> </table> ** END OF REPORT ** BONE MARROW ASPIRATE Specimen: WM:A66-30537 Status: SOUT Requisition: 36950706 Specimen Type: BONE MARROW ASPIRATE Coll Date: Jun 24, 2024 11:23am Recv Date: Jun 24, 2024 11:22am Received By: NICAISE,LILLIANA A Submitted By: Vanwell, Adrik D MD Ordered By: Vanwell, Adrik D MD Facility: Suburban Hospital <!-- PageNumber=\"Page 7 of 7\" --> <!-- PageBreak --> Maryland General Hospital (COCWM) PROGRESS NOTE REPORT#:9244-6046 REPORT STATUS: Signed DATE:07/18/24 TIME: 1516 PATIENT: SCHOMP, GIOVANNA UNIT #: N40711076 ACCOUNT#: M219984609 ROOM/BED: DOB: 10/05/48 AGE: 75 SEX: F ATTEND: Vanwell, Adrik D MD ADM DT: 07/13/24 AUTHOR: Vanwell, Adrik D MD RPT SRV DT: 07/18/24 RPT SRV TM: 1658 \\* ALL edits or amendments must be made on the electronic/computer document * CLINICAL NOTE - BMT CLINICAL NOTE NOTE: BONE MARROW TRANSPLANT CLINIC NOTE DIAGNOSIS: High-risk myelodysplastic syndrome with excess blasts. TRANSPLANT PROVIDER: Adrik D. Vanwell, MD REFERRING PROVIDER: Dr. Matier. MOLECULAR PROFILE: TP53 mutated MLL rearranged. DISEASE REMISSION STATUS: Stable disease on treatment oral venetaclax HISTORY OF PRESENT ILLNESS: The patient was found to have pancytopenia in May 2023, underwent bone marrow biopsy that revealed hypercellular marrow with trilineage dysplasia. Cytogenetics showed 11q deletion consistent with KMT2A MLL deletion as well as molecular studies revealed TP53. The patient was started on Vidaza and venetoclax. She states the Vidaza did not significantly help her blood counts. She did have reactions to the subcutaneous injections and once given IV Vidaza and then this was discontinued. She remained on 200mg daily of venetoclax and this was eventually lowered to 100mg p.o. day. The patient has remained on venetoclax 100mg p.o. day for the last several months and she reports that her blood counts have gradually improved. Blood counts from April 25, 2024 revealed a white cell count of 4.5, hemoglobin 10, platelets 107,000, neutrophils 71%, lymphocytes 20%, monocytes 5%. No circulating blasts. LDH was 110. Electrolytes normal. BUN 25, creatinine 1.38 with a creatinine clearance of 30. LFTs were normal. The patient states she has not needed any blood or platelet transfusions during this time. She otherwise feels well. She is working full time. Has no night sweats, fevers, or unintended weight loss. 7/18/24 here today to review bmbx results No MDS on marrow, 6% blasts, no evidence of leukemia, still has tp53 and 11q present at low levels, normocellulr 25% cellularity REVIEW OF SYSTEMS: CONSTITUTIONAL: Anxious. HEENT: Negative. PULMONARY: Negative. CARDIAC: Negative.
+
+SAMPLE_DOCUMENT_OMNISEQ = """
+Omniseq Comprehensive Genomic Profiling Report
+
+Patient: Naaji Jr, Leif
+DOB: 7/06/1954
+Test Date: 8/26/2024
+Specimen: Right upper lobe lung biopsy (tissue)
+
+RESULTS:
+
+Somatic Variants Detected:
+- KRAS c.35G>A (p.G12D) - Pathogenic, VAF: 42%
+- TP53 c.524G>A (p.R175H) - Pathogenic, VAF: 38%
+
+Somatic Copy Number Alterations:
+- MTAP deletion detected
+- CDKN2A homozygous deletion
+
+Tumor Mutational Burden (TMB):
+- 18.9 mutations/Mb (High)
+
+Microsatellite Instability (MSI):
+- MSI-Stable
+
+PD-L1 Expression (IHC, 22C3 antibody):
+- Tumor Proportion Score (TPS): 1%
+- Interpretation: Low expression
+
+Additional Testing:
+- EGFR: No mutations detected
+- ALK: Negative by IHC
+- ROS1: Negative by IHC
+- HER2: Not amplified
+- MET: No exon 14 skipping mutations
+- RET: No rearrangements detected
+- NTRK: No fusions detected
+
+INTERPRETATION:
+The tumor harbors a KRAS G12D mutation (actionable with KRAS G12C inhibitors in appropriate context) and TP53 R175H mutation. High tumor mutational burden (18.9 mutations/Mb) suggests potential benefit from immunotherapy. PD-L1 expression is low at 1% TPS. MTAP and CDKN2A deletions noted. No targetable alterations detected in EGFR, ALK, ROS1, HER2, MET, RET, or NTRK.
 """
 
-# SAMPLE_DOCUMENT = """
-# Omniseq Comprehensive Genomic Profiling Report
-
-# Patient: Naaji Jr, Leif
-# DOB: 7/06/1954
-# Test Date: 8/26/2024
-# Specimen: Right upper lobe lung biopsy (tissue)
-
-# RESULTS:
-
-# Somatic Variants Detected:
-# - KRAS c.35G>A (p.G12D) - Pathogenic, VAF: 42%
-# - TP53 c.524G>A (p.R175H) - Pathogenic, VAF: 38%
-
-# Somatic Copy Number Alterations:
-# - MTAP deletion detected
-# - CDKN2A homozygous deletion
-
-# Tumor Mutational Burden (TMB):
-# - 18.9 mutations/Mb (High)
-
-# Microsatellite Instability (MSI):
-# - MSI-Stable
-
-# PD-L1 Expression (IHC, 22C3 antibody):
-# - Tumor Proportion Score (TPS): 1%
-# - Interpretation: Low expression
-
-# Additional Testing:
-# - EGFR: No mutations detected
-# - ALK: Negative by IHC
-# - ROS1: Negative by IHC
-# - HER2: Not amplified
-# - MET: No exon 14 skipping mutations
-# - RET: No rearrangements detected
-# - NTRK: No fusions detected
-
-# INTERPRETATION:
-# The tumor harbors a KRAS G12D mutation (actionable with KRAS G12C inhibitors in appropriate context) and TP53 R175H mutation. High tumor mutational burden (18.9 mutations/Mb) suggests potential benefit from immunotherapy. PD-L1 expression is low at 1% TPS. MTAP and CDKN2A deletions noted. No targetable alterations detected in EGFR, ALK, ROS1, HER2, MET, RET, or NTRK.
-# """
-
+SAMPLE_DOCUMENT_BONE_MARROW = """
+<figure> 3 PatientKeeper\u00ae </figure> Printed: 10/11/24 12:46 By: Coppick, Casey MD # BONE MARROW ASPIRATE SCHOMP, GIOVANNA Age: 76Y Gender: F DOB: 10/05/1948 MRN: N40711076 Phone: Date/Time 06/24/24 11:22 Status Signed Source Fawcett Memorial Hospital BONE MARROW ASPIRATE RUN DATE: 07/15/24 Fawcett Memorial Hospital RUN TIME: 8241 Howard County General Hospital RUN USER: Tanner Health System, Lahey Hospital Banner Estrella Medical Center, Lahey Hospital SAROYAN ST, NYU Langone Hospital 2703 FRANCONIA DRIVE GIBBON, NEW MEXICO 12094 (287)106-8560 NAME: SCHOMP,GIOVANNA LOC: MR#: N40711076 ACCT#: D616052344 DOB: 10/05/48 AGE/SEX:75/F REG: 06/24/24 ATTEND DR: Vanwell, Adrik D MD STATUS: DEP CLI DIS: Collection Date: 06/24/24 Received Date: 06/24/24 Pathology Number: WM:A66-48657 Submitting Doctor: Vanwell, Adrik D MD ** CONTINUED ON NEXT PAGE ** RUN DATE: 07/15/24 Fawcett Memorial Hospital RUN TIME: 8241 Howard County General Hospital RUN USER: Tanner Health System, Lahey Hospital Inova Fairfax Hospital PABLO ROAD RD, NYU Langone Hospital 2703 FRANCONIA DRIVE GIBBON, NEW MEXICO 12094 (287)106-8560 NAME: SCHOMP,GIOVANNA LOC: MR#: N40711076 ACCT#: D616052344 DOB: 10/05/48 AGE/SEX:75/F REG: 06/24/24 ATTEND DR: Vanwell,Adrik D MD STATUS: DEP CLI DIS: Collection Date: 06/24/24 Received Date: 06/24/24 Pathology Number: WM:A66-48657 Submitting Doctor: Vanwell, Adrik D MD CLINICAL HISTORY Our patient is a 75-year-old woman with a history of breast cancer and therapy related myeloid neoplasm (MDS) displaying monoallelic TP53 and -11q undergoing surveillance bone marrow biopsy evaluation. ADDENDUM FINDINGS NeoTYPE(TM) Analysis AML Prognostic Profile SPECIMEN TYPE: Bone Marrow BODY SITE: Bone Marrow RESULTS SUMMARY: SNVs/Indels TP53 Y234N PERTINENT NEGATIVES: NO alterations detected in the following genes: FLT3, IDH1, IDH2, NPM1 <!-- PageNumber=\"Page 1 of 7\" --> <!-- PageBreak --> <figure> 3 PatientKeeper\u00ae </figure> Printed: 10/11/24 12:46 By: Coppick, Casey MD # BONE MARROW ASPIRATE SCHOMP, GIOVANNA Age: 76Y Gender: F DOB: 10/05/1948 MRN: N40711076 Phone: Date/Time 06/24/24 11:22 Status Signed Source Fawcett Memorial Hospital INTERPRETATION A single TP53 mutation with evidence of TP53 copy number loss indicates \"biallelic TP53 inactivation\" and is associated with a very poor prognosis. A complex karyotype may be regarded as presumptive evidence of TP53 copy loss on the trans allele. A VAF >10% with 10-19% blasts is classified as MDS with mutated TP53; TP53 VAF >10% with at least 20% blasts is consistent with AML with mutated TP53. Molecular Testing Detail 1\\. TP53 - p.Y234N; c .. 700T>A - NM_000546.5 - VAF 14.0% For additional details, please refer to the full report provided by NeoGenomics Laboratories. TEST RESULTS BY Montgomery General Hospital AFB/tm 07/09/24 Cytogenetics Oncology Chromosome Analysis ** CONTINUED ON NEXT PAGE ** RUN DATE: 07/15/24 Fawcett Memorial Hospital RUN TIME: 8241 Howard County General Hospital RUN USER: Lahey Hospital RIANA, Lahey Hospital Saint Peter's University Hospital Summerlin Hospital, Lahey Hospital SAROYAN ST, NYU Langone Hospital 2703 FRANCONIA DRIVE GIBBON, NEW MEXICO 12094 (287)106-8560 NAME: SCHOMP,GIOVANNA LOC: MR#: N40711076 ACCT#: D616052344 DOB: 10/05/48 AGE/SEX:75/F REG: 06/24/24 ATTEND DR: Vanwell, Adrik D MD STATUS: DEP CLI DIS: Collection Date: 06/24/24 Received Date: 06/24/24 Pathology Number: BZ:B79-36840 Submitting Doctor: Vanwell, Adrik D MD ADDENDUM FINDINGS: (Continued) SPECIMEN TYPE: Bone Marrow BODY SITE: Bone Marrow KARYOTYPE: 46,XX,del(11)(q13q23)[13]/46,XX[7] INTERPRETATION: ABNORMAL FEMALE KARYOTYPE - DELETION of 11q, AS PREVIOUSLY REPORTED Cytogenetic analysis shows an abnormal female karyotype. Thirteen cells show a deletion of <!-- PageNumber=\"Page 2 of 7\" --> <!-- PageBreak --> <figure> 2 <!-- PageHeader=\"PatientKeeper\u00ae\" --> </figure> Printed: 10/11/24 12:46 By: Coppick, Casey MD # BONE MARROW ASPIRATE SCHOMP, GIOVANNA Age: 76Y Gender: F DOB: 10/05/1948 MRN: N40711076 Phone: Date/Time 06/24/24 11:22 Status Signed Source Fawcett Memorial Hospital the long arm of chromosome 11 and seven cells show a normal karyotype. Deletion of 11q is observed in MDS and is considered an indicator of very good prognosis. This finding was reported in a previous specimen (see NeoTRACK Results below), suggesting clonal persistence. These results should be interpreted in conjunction with clinical and other laboratory findings. For additional details, please refer to the full report provided by Montgomery General Hospital. TEST RESULTS BY Henry Ford Hospital LABORATORIES AFB/bs/CL/rc/AFB/ctm 07/06/24-07/11/24 Addendum Electronically signed Ege J Galba, MD 07/15/24 1547 FISH Analysis Multiple Probe Panel Results: Abnormal Interpretation: 11q23 KMT2A (MLL) rearrangement: Not Detected KMT2A (11q23) loss: Detected Del(17p): Not Detected Fluorescence in situ hybridization (FISH) analysis was performed using a dual color KMT2A (MLL) break apart probe set to detect rearrangement of the KMT2A (MLL) gene locus reported ** CONTINUED ON NEXT PAGE ** RUN DATE: 07/15/24 Fawcett Memorial Hospital RUN TIME: 8241 Howard County General Hospital RUN USER: Lahey Hospital Front Royal Warren Memorial Hospital, Lahey Hospital Saint Peter's University Hospital Craig Hospital SAROYAN ST, NYU Langone Hospital 2703 FRANCONIA DRIVE GIBBON, NEW MEXICO 12094 (287)106-8560 NAME: SCHOMP,GIOVANNA JAYNI: MR#: N40711076 ACCT#: D616052344 DOB: 10/05/48 AGE/SEX:75/F REG: 06/24/24 ATTEND DR: Vanwell, Adrik D MD STATUS: DEP CLI DIS: Collection Date: 06/24/24 Received Date: 06/24/24 Pathology Number: WM:B79-36840 Submitting Doctor: Vanwell, Adrik D MD ADDENDUM FINDINGS: (Continued) in B-cell acute lymphoblastic leukemia (B-ALL). The abnormal signal pattern (1F) was observed in 54.5% of the analyzed nuclei. The normal reference range is < 3.1% and as such, this represents an ABNORMAL result indicative of loss of the KMT2A (MLL) gene region on chromosome 11 or loss of chromosome 11. Counts for the other probes are within the normal limits. For further information please reference the complete outside NeoGenomics report (QSY59-747010). PR/PR <!-- PageNumber=\"Page 3 of 7\" --> <!-- PageBreak --> <figure> 3 PatientKeeper </figure> Printed: 10/11/24 12:46 By: Coppick, Casey MD ## BONE MARROW ASPIRATE SCHOMP, GIOVANNA Age: 76Y Gender: F DOB: 10/05/1948 MRN: N40711076 Phone: Date/Time 06/24/24 11:22 Status Signed Source Fawcett Memorial Hospital 7/04/24 Addendum Electronically signed FINAL DIAGNOSIS Adrik I Farhat, MD 07/04/24 0828 A. BONE MARROW CORE BIOPSY, ASPIRATE SMEARS, TOUCH IMPRINTS, CLOT SECTIONS: \\- NORMAL CELLULAR MARROW (20-25% CELLULAR) WITH TRILINEAGE HEMATOPOIESIS. \\- NO CONVINCING MORPHOLOGIC EVIDENCE OF HEMATOLYMPHOID NEOPLASM OR MYELODYSPLASIA. \\- 3% BLASTS BY MORPHOLOGY; 6% BY CD34 IHC. \\- PENDING CYTOGENIC, FISH, AND MOLECULAR STUDIES. \\- MILDLY INCREASED STORAGE IRON BY SPECIAL STAIN. \\- SEE COMMENT. COMMENT: Histologic evaluation paired with immunohistochemical stains and flow cytometric analysis reveals a normal cellular and well-organized trilineage hematopoietic marrow with no convincing evidence of increased blast forms, myelodysplasia related change, or progression to acute leukemia. Pending cytogenic, FISH, and molecular studies will be reported in addendum to follow. AFB/ra 06/27/24 (1) GROSS DESCRIPTION A. Received in formalin labeled \"bone marrow aspirate\" is a 1.7 x 0.7 x 0.7 cm fragment of clotted blood. The specimen is sectioned and entirely submitted in cassette A1. B. Received in formalin labeled \"bone marrow biopsy\" are three pink tan trabecular bone ** CONTINUED ON NEXT PAGE ** RUN DATE: 07/15/24 Fawcett Memorial Hospital RUN TIME: 8241 Howard County General Hospital RUN USER: Lahey Hospital Front Royal Warren Memorial Hospital, Lahey Hospital Inspira Medical Center SAROYAN ST, NYU Langone Hospital 2703 FRANCONIA DRIVE GIBBON, NEW MEXICO 12094 (287)106-8560 NAME: SCHOMP,GIOVANNA LOC: MR#: N40711076 ACCT#: D616052344 DOB: 10/05/48 AGE/SEX:75/F REG: 06/24/24 ATTEND DR: Vanwell, Adrik D MD STATUS: DEP CLI DIS: Collection Date: 06/24/24 Received Date: 06/24/24 Pathology Number: :B79-36840 Submitting Doctor: Vanwell, Adrik D MD GROSS DESCRIPTION: (Continued) core biopsy specimens ranging from 0.3 to 1.3 cm in length (diameter 2 mm). The specimen is submitted in toto in cassette B1 following bone marrow decalcification protocol. CMS/gs 06/24/24 MICROSCOPIC DESCRIPTION BONE MARROW ASPIRATE EVALUATION: Contents: Received for morphologic review are five aspirate smears including one stain for iron, two touch imprints, three sections of clot, and three sections of core biopsy. Cellularity: Spicular and cellular; adequate. <!-- PageNumber=\"Page 4 of 7\" --> <!-- PageBreak --> <figure> 3 PatientKeeper\u00ae </figure> Printed: 10/11/24 12:46 By: Coppick, Casey MD # BONE MARROW ASPIRATE SCHOMP, GIOVANNA Age: 76Y Gender: F DOB: 10/05/1948 MRN: N40711076 Phone: Date/Time 06/24/24 11:22 Status Signed Source Fawcett Memorial Hospital M/E ratio: 1.5. Iron Stain: Mildly increased storage iron; no ringed sideroblasts identified. DIFFERENTIAL COUNT: <table> <tr> <th>NORMAL %</th> <th>CELL TYPE</th> <th></th> <th></th> <th></th> <th colspan=\"2\">%</th> </tr> <tr> <td>0-5</td> <td>BLASTS</td> <td>3</td> <td></td> <td></td> <td colspan=\"2\"></td> </tr> <tr> <td>1-8</td> <td colspan=\"3\">PROMYELOCYTES</td> <td colspan=\"3\">1.8</td> </tr> <tr> <td>6-23</td> <td>MYELOCYTES</td> <td colspan=\"2\"></td> <td colspan=\"3\">11.2</td> </tr> <tr> <td>13-32</td> <td colspan=\"3\">METAMYELOCYTES</td> <td colspan=\"3\">13.6</td> </tr> <tr> <td>7-30</td> <td>MATURE NEUTROPHILS</td> <td colspan=\"2\"></td> <td></td> <td colspan=\"2\">23</td> </tr> <tr> <td>1-5</td> <td>MATURE EOSINOPHILS</td> <td colspan=\"2\"></td> <td></td> <td colspan=\"2\">2.2</td> </tr> <tr> <td>0-1</td> <td>MATURE BASOPHILS</td> <td colspan=\"2\"></td> <td colspan=\"3\">0</td> </tr> <tr> <td>1-5</td> <td>MONOCYTES</td> <td colspan=\"2\"></td> <td>1.2</td> <td colspan=\"2\"></td> </tr> <tr> <td>3-23</td> <td>LYMPHOCYTES</td> <td colspan=\"2\"></td> <td></td> <td colspan=\"2\">8</td> </tr> <tr> <td>0-4</td> <td>PLASMA CELLS</td> <td colspan=\"2\"></td> <td>0</td> <td colspan=\"2\"></td> </tr> <tr> <td>1-8</td> <td>PRONORMOBLASTS</td> <td colspan=\"2\"></td> <td></td> <td colspan=\"2\">6.8</td> </tr> <tr> <td>7-34</td> <td colspan=\"3\">NORMOBLASTS</td> <td></td> <td>29.2</td> <td></td> </tr> </table> Differential performed on 500 cells from the aspirate smear. MORPHOLOGY: Erythroids: Relative erythroid hyperplasia with predominance of polychromatophilic forms. ** CONTINUED ON NEXT PAGE ** RUN DATE: 07/15/24 Fawcett Memorial Hospital RUN TIME: 8241 Howard County General Hospital RUN USER: Lahey Hospital RIANA, Lahey Hospital Saint Peter's University Hospital Craig Hospital SAROYAN ST, NYU Langone Hospital 2703 FRANCONIA DRIVE GIBBON, NEW MEXICO 12094 (287)106-8560 NAME: SCHOMP,GIOVANNA LOC: MR#: N40711076 ACCT#: D616052344 DOB: 10/05/48 AGE/SEX:75/F REG: 06/24/24 ATTEND DR: Vanwell, Adrik D MD STATUS: DEP CLI DIS: Collection Date: 06/24/24 Received Date: 06/24/24 Pathology Number: WM:B79-36840 Submitting Doctor: Vanwell, Adrik D MD MICROSCOPIC DESCRIPTION: (Continued) Myeloids: Appropriate full spectrum maturation with slight left shift lacking evidence of increased blast forms or convincing dysplastic change. Megakaryocytes: Scattered with occasional immature hypolobated forms. Others: Frequent macrophages. TOUCH IMPRINTS: Morphologically similar in cellular composition to the aspirate smear displaying trilineage hematopoietic elements with left shifted myeloid precursors lacking evidence of increased <!-- PageNumber=\"Page 5 of 7\" --> <!-- PageBreak --> <figure> 2 <!-- PageHeader=\"Patroller\" --> </figure> Printed: 10/11/24 12:46 By: Coppick, Casey MD # BONE MARROW ASPIRATE SCHOMP, GIOVANNA Age: 76Y Gender: F DOB: 10/05/1948 MRN: N40711076 Phone: Date/Time 06/24/24 11:22 Status Signed Source Fawcett Memorial Hospital blast forms or convincing dysplastic change. BONE MARROW CORE BIOPSY AND CLOT SECTION EVALUATION: Quality: Adequate bone marrow core biopsy (14 mm/18 mm) and clot section with few marrow particles. Microscopic Description: Histologic sections reveal a normal cellular marrow (20-25% cellular) with somewhat patchy, but well-organized trilineage hematopoietic elements displaying background erythroid hyperplasia and scattered hemosiderin deposition lacking convincing evidence of myelodysplastic syndrome, increased blasts, or malignancy. Immunohistochemical stains performed at Fawcett Memorial Hospital Laboratory with appropriate reactive controls on block B1 displays slightly increased CD34-positive myeloblasts comprising approximately 6% of the total bone marrow cellularity by CD34 IHC with partial coexpression of CD117. CD61 highlights scattered appropriate quantities of megakaryocytes. Special stain performed at Fawcett Memorial Hospital Laboratory with appropriate reactive controls on block B1 displays no significant reticulin fibrosis by special stain (MF 0/3). Flow cytometry performed at Fawcett Memorial Hospital Laboratory with appropriate quality metrics on the bone marrow aspirate specimen displays no evidence of increased blast forms or acute leukemia. For additional details, please see the full report (A66-69750). IMMUNOSTAIN REFERENCE: These tests were developed and their performance characteristics determined by Fawcett Memorial Hospital. It has not been cleared or approved by the U.S. Food and Drug Administration. The FDA has determined that such clearance or approval is not necessary. These tests are used for clinical purposes. They should not be regarded as investigational or for research. The laboratory is certified under the Clinical Laboratory Improvement Amendments of 1988 (CLIA) as qualified to perform high complexity clinical laboratory testing. ** CONTINUED ON NEXT PAGE ** RUN DATE: 07/15/24 Fawcett Memorial Hospital RUN TIME: 8241 Howard County General Hospital RUN USER: Tanner Health System, Lahey Hospital Banner Estrella Medical Center, METHODIST SHAFTER TER, NYU Langone Hospital 2703 FRANCONIA DRIVE GIBBON, NEW MEXICO 12094 (287)106-8560 NAME: SCHOMP,GIOVANNA LOC: MR#: N40711076 ACCT#: D616052344 DOB: 10/05/48 AGE/SEX:75/F REG: 06/24/24 ATTEND DR: Vanwell, Adrik D MD STATUS: DEP CLI DIS: Collection Date: 06/24/24 Received Date: 06/24/24 Pathology Number: WM:B79-36840 Submitting Doctor: Vanwell, Adrik D MD MICROSCOPIC DESCRIPTION: (Continued) REFERENCES: 1\\. Department of Health and Human Services, Food and Drug Administration. Medical devices: classification/reclassification; restricted devices; analyte specific reagents. Final rule. Federal register. 1977 (Nov. 10);62243 {21CFR809 and <!-- PageNumber=\"Page 6 of 7\" --> <!-- PageBreak --> <figure> 2 PatientKeeper </figure> Printed: 10/11/24 12:46 By: Coppick, Casey MD # BONE MARROW ASPIRATE SCHOMP, GIOVANNA Age: 76Y Gender: F DOB: 10/05/1948 MRN: N40711076 Phone: Date/Time 06/24/24 11:22 864}. Status Signed Source Fawcett Memorial Hospital 2\\. Jerrod CR. FDA issues final rule for classification and reclassification of immunochemistry reagents and kits. Am J Clin Pathol. 1999;111:443-470. 3\\. Swanson PE. Labels, disclaimer, and rules (oh, my!). Am J Clin Pathol. 1999;111:580-886. AFB/ra 06/27/24 <table> <tr> <td>Electronically signed by</td> <td>Ege J Galba, MD</td> <td>06/28/24 1650</td> </tr> <tr> <td>Electronically signed by</td> <td>Adrik I Farhat, MD</td> <td>07/04/24 0844</td> </tr> </table> ** END OF REPORT ** BONE MARROW ASPIRATE Specimen: WM:A66-30537 Status: SOUT Requisition: 36950706 Specimen Type: BONE MARROW ASPIRATE Coll Date: Jun 24, 2024 11:23am Recv Date: Jun 24, 2024 11:22am Received By: NICAISE,LILLIANA A Submitted By: Vanwell, Adrik D MD Ordered By: Vanwell, Adrik D MD Facility: Suburban Hospital <!-- PageNumber=\"Page 7 of 7\" --> <!-- PageBreak --> Maryland General Hospital (COCWM) PROGRESS NOTE REPORT#:9244-6046 REPORT STATUS: Signed DATE:07/18/24 TIME: 1516 PATIENT: SCHOMP, GIOVANNA UNIT #: N40711076 ACCOUNT#: M219984609 ROOM/BED: DOB: 10/05/48 AGE: 75 SEX: F ATTEND: Vanwell, Adrik D MD ADM DT: 07/13/24 AUTHOR: Vanwell, Adrik D MD RPT SRV DT: 07/18/24 RPT SRV TM: 1658 \\* ALL edits or amendments must be made on the electronic/computer document * CLINICAL NOTE - BMT CLINICAL NOTE NOTE: BONE MARROW TRANSPLANT CLINIC NOTE DIAGNOSIS: High-risk myelodysplastic syndrome with excess blasts. TRANSPLANT PROVIDER: Adrik D. Vanwell, MD REFERRING PROVIDER: Dr. Matier. MOLECULAR PROFILE: TP53 mutated MLL rearranged. DISEASE REMISSION STATUS: Stable disease on treatment oral venetaclax HISTORY OF PRESENT ILLNESS: The patient was found to have pancytopenia in May 2023, underwent bone marrow biopsy that revealed hypercellular marrow with trilineage dysplasia. Cytogenetics showed 11q deletion consistent with KMT2A MLL deletion as well as molecular studies revealed TP53. The patient was started on Vidaza and venetoclax. She states the Vidaza did not significantly help her blood counts. She did have reactions to the subcutaneous injections and once given IV Vidaza and then this was discontinued. She remained on 200mg daily of venetoclax and this was eventually lowered to 100mg p.o. day. The patient has remained on venetoclax 100mg p.o. day for the last several months and she reports that her blood counts have gradually improved. Blood counts from April 25, 2024 revealed a white cell count of 4.5, hemoglobin 10, platelets 107,000, neutrophils 71%, lymphocytes 20%, monocytes 5%. No circulating blasts. LDH was 110. Electrolytes normal. BUN 25, creatinine 1.38 with a creatinine clearance of 30. LFTs were normal. The patient states she has not needed any blood or platelet transfusions during this time. She otherwise feels well. She is working full time. Has no night sweats, fevers, or unintended weight loss. 7/18/24 here today to review bmbx results No MDS on marrow, 6% blasts, no evidence of leukemia, still has tp53 and 11q present at low levels, normocellulr 25% cellularity REVIEW OF SYSTEMS: CONSTITUTIONAL: Anxious. HEENT: Negative. PULMONARY: Negative. CARDIAC: Negative.
+"""
 
 # ============================================================================
 # TEST FUNCTIONS
@@ -1449,98 +1449,371 @@ SAMPLE_DOCUMENT = """
 
 
 @pytest.mark.integration
-async def test_extract_molecular_findings():
-    """Integration test for molecular findings extraction with real API"""
+async def test_extract_molecular_findings_omniseq():
+    """
+    Integration test for molecular findings extraction with real API - Omniseq Report
+
+    Clinical scenario: Comprehensive genomic profiling (Omniseq) on lung adenocarcinoma specimen
+    showing actionable KRAS G12D mutation, TP53 mutation, copy number alterations, and
+    high tumor mutational burden.
+
+    Key features to validate:
+    - Test report metadata (Omniseq, NGS/IHC methods, tissue specimen from right upper lobe lung)
+    - Somatic variants: KRAS G12D (p.G12D, c.35G>A, VAF 42%), TP53 R175H (p.R175H, c.524G>A, VAF 38%)
+    - Copy number alterations: MTAP deletion, CDKN2A homozygous deletion
+    - Tumor mutational burden: 18.9 mutations/Mb (High)
+    - Microsatellite instability: MSI-Stable
+    - PD-L1 expression: TPS 1% (Low) by IHC with 22C3 antibody
+    - Negative findings documented: EGFR, ALK, ROS1, HER2, MET, RET, NTRK
+    """
     # Run extraction
-    result = await extract_molecular_findings_async(SAMPLE_DOCUMENT, max_iterations=3)
+    result = await extract_molecular_findings_async(
+        SAMPLE_DOCUMENT_OMNISEQ, max_iterations=3
+    )
 
-    # Verify result
-    assert result.success is True
-    assert result.extraction is not None
-    assert len(result.extraction.reports) >= 1
+    # Verify result success
+    assert result.success is True, "Extraction should complete successfully"
+    assert (
+        result.extraction is not None
+    ), "Extraction should contain molecular findings data"
 
-    # Check report structure
+    # Should have exactly one report (single Omniseq comprehensive panel)
+    assert (
+        len(result.extraction.reports) == 1
+    ), "Should have one test report (Omniseq comprehensive panel)"
+
     report = result.extraction.reports[0]
-    assert len(report.test_methods) >= 1
-    assert any("NGS" in method.upper() for method in report.test_methods)
-    assert len(report.findings) >= 5
 
-    # Collect all findings from all reports (usually just 1 report)
-    all_findings = []
-    for r in result.extraction.reports:
-        all_findings.extend(r.findings)
+    # ============================================================================
+    # VALIDATE REPORT METADATA
+    # ============================================================================
 
-    # Separate findings by type
-    variants = [f for f in all_findings if isinstance(f, VariantFinding)]
-    cnas = [f for f in all_findings if isinstance(f, CNAFinding)]
-    ihc_findings = [f for f in all_findings if isinstance(f, IHCFinding)]
-    fish_findings = [f for f in all_findings if isinstance(f, FISHFinding)]
-    fusions = [f for f in all_findings if isinstance(f, FusionFinding)]
-    signatures = [f for f in all_findings if isinstance(f, SignatureFinding)]
-    wildtypes = [f for f in all_findings if isinstance(f, WildtypeFinding)]
+    # Test name should be Omniseq or similar comprehensive genomic profiling
+    assert report.test_name is not None, "Test name should be documented"
+    assert (
+        "omniseq" in report.test_name.lower() or "genomic" in report.test_name.lower()
+    ), f"Test name should reference Omniseq or genomic profiling, got: {report.test_name}"
 
-    # Check variant constraint per report
-    for r in result.extraction.reports:
-        report_variants = [f for f in r.findings if isinstance(f, VariantFinding)]
-        assert len(report_variants) <= 15, f"Report has more than 15 variants"
+    # Test methods should include NGS (for variants/CNAs) and IHC (for PD-L1)
+    assert len(report.test_methods) >= 1, "Should document at least one test method"
+    test_methods_str = " ".join(report.test_methods).upper()
+    assert (
+        "NGS" in test_methods_str or "SEQUENCING" in test_methods_str
+    ), f"Should include NGS/sequencing method, got: {report.test_methods}"
+    assert (
+        "IHC" in test_methods_str or "IMMUNOHISTOCHEMISTRY" in test_methods_str
+    ), f"Should include IHC method for PD-L1, got: {report.test_methods}"
 
-    # Check KRAS variant
+    # Specimen should be tissue from right upper lobe lung
+    assert report.specimen_type is not None, "Specimen type should be documented"
+    assert (
+        "tissue" in report.specimen_type.lower()
+    ), f"Specimen type should be tissue, got: {report.specimen_type}"
+
+    assert report.specimen_site is not None, "Specimen site should be documented"
+    specimen_site_lower = report.specimen_site.lower()
+    assert (
+        "lung" in specimen_site_lower
+    ), f"Specimen site should include lung, got: {report.specimen_site}"
+    assert (
+        "right" in specimen_site_lower and "upper" in specimen_site_lower
+    ), f"Specimen site should specify right upper lobe, got: {report.specimen_site}"
+
+    # Should have multiple findings (variants, CNAs, signatures, IHC)
+    assert (
+        len(report.findings) >= 6
+    ), f"Should have at least 6 findings (2 variants, 2 CNAs, 2 signatures, 1 IHC minimum), got {len(report.findings)}"
+
+    # ============================================================================
+    # SEPARATE FINDINGS BY TYPE
+    # ============================================================================
+
+    variants = [f for f in report.findings if isinstance(f, VariantFinding)]
+    cnas = [f for f in report.findings if isinstance(f, CNAFinding)]
+    ihc_findings = [f for f in report.findings if isinstance(f, IHCFinding)]
+    fish_findings = [f for f in report.findings if isinstance(f, FISHFinding)]
+    fusions = [f for f in report.findings if isinstance(f, FusionFinding)]
+    signatures = [f for f in report.findings if isinstance(f, SignatureFinding)]
+    wildtypes = [f for f in report.findings if isinstance(f, WildtypeFinding)]
+
+    # ============================================================================
+    # VALIDATE VARIANTS (SOMATIC MUTATIONS)
+    # ============================================================================
+
+    # Should have exactly 2 pathogenic variants documented (KRAS G12D, TP53 R175H)
+    assert (
+        len(variants) == 2
+    ), f"Should extract exactly 2 pathogenic variants, got {len(variants)}"
+
+    # Check KRAS G12D variant
     kras = next((v for v in variants if v.gene.upper() == "KRAS"), None)
-    assert kras is not None
-    assert "G12D" in kras.canonical_variant or "G12C" in kras.canonical_variant
-    assert kras.origin == Origin.SOMATIC
+    assert kras is not None, "KRAS variant should be extracted"
+    assert (
+        "G12D" in kras.canonical_variant
+    ), f"KRAS variant should be G12D, got: {kras.canonical_variant}"
+    assert kras.origin == Origin.SOMATIC, "KRAS should be somatic"
 
-    # Check TP53 variant
+    # Check protein and cDNA changes if captured
+    if kras.protein_change:
+        assert (
+            "G12D" in kras.protein_change
+        ), f"KRAS protein change should contain G12D, got: {kras.protein_change}"
+    if kras.cdna_change:
+        assert (
+            "35G>A" in kras.cdna_change or "c.35" in kras.cdna_change
+        ), f"KRAS cDNA change should be c.35G>A, got: {kras.cdna_change}"
+
+    # Check VAF
+    assert kras.variant_frequency is not None, "KRAS VAF should be documented"
+    assert (
+        abs(kras.variant_frequency - 0.42) < 0.01
+    ), f"KRAS VAF should be ~0.42 (42%), got: {kras.variant_frequency}"
+
+    # Check TP53 R175H variant
     tp53 = next((v for v in variants if v.gene.upper() == "TP53"), None)
-    assert tp53 is not None
+    assert tp53 is not None, "TP53 variant should be extracted"
+    assert (
+        "R175H" in tp53.canonical_variant
+    ), f"TP53 variant should be R175H, got: {tp53.canonical_variant}"
+    assert tp53.origin == Origin.SOMATIC, "TP53 should be somatic"
 
-    # Check CNAs
-    assert len(cnas) >= 2  # MTAP deletion, CDKN2A deletion
+    # Check protein and cDNA changes if captured
+    if tp53.protein_change:
+        assert (
+            "R175H" in tp53.protein_change
+        ), f"TP53 protein change should contain R175H, got: {tp53.protein_change}"
+    if tp53.cdna_change:
+        assert (
+            "524G>A" in tp53.cdna_change or "c.524" in tp53.cdna_change
+        ), f"TP53 cDNA change should be c.524G>A, got: {tp53.cdna_change}"
+
+    # Check VAF
+    assert tp53.variant_frequency is not None, "TP53 VAF should be documented"
+    assert (
+        abs(tp53.variant_frequency - 0.38) < 0.01
+    ), f"TP53 VAF should be ~0.38 (38%), got: {tp53.variant_frequency}"
+
+    # ============================================================================
+    # VALIDATE COPY NUMBER ALTERATIONS
+    # ============================================================================
+
+    # Should have 2 CNAs (MTAP deletion, CDKN2A deletion)
+    assert len(cnas) == 2, f"Should extract 2 copy number alterations, got {len(cnas)}"
+
+    # Check MTAP deletion
     mtap = next((c for c in cnas if c.gene.upper() == "MTAP"), None)
-    assert mtap is not None
-    assert "deletion" in mtap.alteration_direction.lower()
+    assert mtap is not None, "MTAP deletion should be extracted"
+    assert (
+        mtap.alteration_direction == CNADirection.DELETION
+    ), f"MTAP should be deletion, got: {mtap.alteration_direction}"
+    assert mtap.origin == Origin.SOMATIC, "MTAP deletion should be somatic"
 
-    # Check PD-L1 IHC
-    assert len(ihc_findings) >= 1
+    # Check CDKN2A deletion
+    cdkn2a = next((c for c in cnas if c.gene.upper() == "CDKN2A"), None)
+    assert cdkn2a is not None, "CDKN2A deletion should be extracted"
+    assert (
+        cdkn2a.alteration_direction == CNADirection.DELETION
+    ), f"CDKN2A should be deletion, got: {cdkn2a.alteration_direction}"
+    assert cdkn2a.origin == Origin.SOMATIC, "CDKN2A deletion should be somatic"
+
+    # Note should mention homozygous if captured
+    if cdkn2a.notes:
+        assert (
+            "homozygous" in cdkn2a.notes.lower()
+        ), "CDKN2A notes should mention homozygous deletion"
+
+    # ============================================================================
+    # VALIDATE GENOMIC SIGNATURES (TMB, MSI)
+    # ============================================================================
+
+    # Should have 2 signature findings (TMB, MSI)
+    assert (
+        len(signatures) >= 2
+    ), f"Should extract at least 2 signatures (TMB, MSI), got {len(signatures)}"
+
+    # Check TMB
+    tmb = next((s for s in signatures if s.signature_type == SignatureType.TMB), None)
+    assert tmb is not None, "TMB should be extracted"
+    assert (
+        "high" in tmb.result.lower()
+    ), f"TMB result should indicate high, got: {tmb.result}"
+    assert (
+        tmb.quantitative_value is not None
+    ), "TMB quantitative value should be documented"
+    assert (
+        abs(tmb.quantitative_value - 18.9) < 0.1
+    ), f"TMB should be 18.9, got: {tmb.quantitative_value}"
+    assert tmb.unit is not None, "TMB unit should be documented"
+    assert (
+        "mut" in tmb.unit.lower() and "mb" in tmb.unit.lower()
+    ), f"TMB unit should be mutations/Mb, got: {tmb.unit}"
+
+    # Check MSI
+    msi = next((s for s in signatures if s.signature_type == SignatureType.MSI), None)
+    assert msi is not None, "MSI should be extracted"
+    assert (
+        "stable" in msi.result.lower() or "mss" in msi.result.lower()
+    ), f"MSI result should indicate stable/MSS, got: {msi.result}"
+    # Should standardize to MSI_RESULT enum if possible
+    if msi.msi_result:
+        assert (
+            msi.msi_result == MSIResult.MSS
+        ), f"MSI standardized result should be MSS, got: {msi.msi_result}"
+
+    # ============================================================================
+    # VALIDATE IHC FINDINGS (PD-L1)
+    # ============================================================================
+
+    # Should have 1 IHC finding (PD-L1)
+    assert (
+        len(ihc_findings) >= 1
+    ), f"Should extract at least 1 IHC finding (PD-L1), got {len(ihc_findings)}"
+
+    # Check PD-L1
     pdl1 = next(
         (
-            e
-            for e in ihc_findings
-            if "PD-L1" in e.biomarker.upper() or "PDL1" in e.biomarker.upper()
+            f
+            for f in ihc_findings
+            if "PD-L1" in f.biomarker.upper() or "PDL1" in f.biomarker.upper()
         ),
         None,
     )
-    assert pdl1 is not None
-    # PD-L1 TPS 1% could be captured as percentage_positive=1.0 or in other fields
+    assert pdl1 is not None, "PD-L1 IHC should be extracted"
+    assert pdl1.biomarker.upper() in [
+        "PD-L1",
+        "PDL1",
+        "PD-L1",
+    ], f"PD-L1 biomarker name should be standardized, got: {pdl1.biomarker}"
 
-    # Check signatures
-    assert len(signatures) >= 2  # TMB and MSI
-    tmb = next((s for s in signatures if "TMB" in s.signature_type.upper()), None)
-    assert tmb is not None
-    assert "high" in tmb.result.lower() or tmb.quantitative_value is not None
+    # TPS 1% should be captured as percentage_positive
+    assert (
+        pdl1.percentage_positive is not None
+    ), "PD-L1 TPS percentage should be documented"
+    assert (
+        abs(pdl1.percentage_positive - 1.0) < 0.1
+    ), f"PD-L1 TPS should be 1%, got: {pdl1.percentage_positive}"
 
-    msi = next((s for s in signatures if "MSI" in s.signature_type.upper()), None)
-    assert msi is not None
+    # Score type should be TPS if captured
+    if pdl1.score_type:
+        assert (
+            pdl1.score_type == PDL1ScoreType.TPS
+        ), f"PD-L1 score type should be TPS, got: {pdl1.score_type}"
+
+    # Assay should be 22C3 if captured
+    if pdl1.assay:
+        assert "22C3" in pdl1.assay, f"PD-L1 assay should be 22C3, got: {pdl1.assay}"
+
+    # ============================================================================
+    # VALIDATE NO FUSIONS OR FISH (none in this report)
+    # ============================================================================
+
+    # Should have no fusion findings
+    assert (
+        len(fusions) == 0
+    ), f"Should have no fusion findings in this report, got {len(fusions)}"
+
+    # Should have no FISH findings (ALK, ROS1 tested by IHC, not FISH in this report)
+    assert (
+        len(fish_findings) == 0
+    ), f"Should have no FISH findings in this report, got {len(fish_findings)}"
+
+    # ============================================================================
+    # VALIDATE WILDTYPE/NEGATIVE FINDINGS (optional)
+    # ============================================================================
+
+    # Negative findings may or may not be extracted (EGFR, ALK, ROS1, etc.)
+    # Per instructions, these are typically skipped unless explicitly requested
+    # So we don't assert their presence, but if they're there, they should be correct
+
+    if len(wildtypes) > 0:
+        print(f"✓ Found {len(wildtypes)} wildtype findings (negative results)")
+        for wt in wildtypes:
+            assert (
+                wt.origin == Origin.SOMATIC
+            ), f"Wildtype findings should be somatic, got: {wt.origin} for {wt.gene}"
+            assert wt.gene in [
+                "EGFR",
+                "ALK",
+                "ROS1",
+                "HER2",
+                "MET",
+                "RET",
+                "NTRK1",
+                "NTRK2",
+                "NTRK3",
+            ], f"Wildtype gene should be one of the tested genes, got: {wt.gene}"
+
+    # ============================================================================
+    # VALIDATE RAW TEXT AND EVIDENCE
+    # ============================================================================
+
+    # All findings should have raw_text
+    for finding in report.findings:
+        assert (
+            finding.raw_text
+        ), f"Finding of type {finding.finding_type} should have raw_text"
+        assert (
+            len(finding.raw_text) > 0
+        ), f"Raw text should not be empty for {finding.finding_type}"
+
+    # ============================================================================
+    # CLINICAL SUMMARY OUTPUT
+    # ============================================================================
 
     print("\n" + "=" * 80)
-    print("TEST PASSED!")
+    print("TEST PASSED - OMNISEQ COMPREHENSIVE GENOMIC PROFILING")
     print("=" * 80)
-    print(f"\nExtracted {len(result.extraction.reports)} report(s):")
-    for i, r in enumerate(result.extraction.reports, 1):
-        print(f"\n  Report {i}:")
-        print(f"    Test Name: {r.test_name}")
-        print(f"    Test Methods: {r.test_methods}")
-        print(f"    Specimen Type: {r.specimen_type}")
-        print(f"    Specimen Site: {r.specimen_site}")
-        print(f"    Tumor Content: {r.tumor_content}")
-        print(f"    Findings: {len(r.findings)}")
-    print(f"\nTotal findings across all reports: {len(all_findings)}")
-    print(f"  - {len(variants)} variants")
-    print(f"  - {len(cnas)} CNAs")
-    print(f"  - {len(fusions)} fusions")
-    print(f"  - {len(ihc_findings)} IHC findings")
-    print(f"  - {len(fish_findings)} FISH findings")
-    print(f"  - {len(signatures)} signature findings")
-    print(f"  - {len(wildtypes)} wildtype findings")
+    print(f"\nTest Report:")
+    print(f"  Name: {report.test_name}")
+    print(f"  Methods: {', '.join(report.test_methods)}")
+    print(f"  Specimen: {report.specimen_type} from {report.specimen_site}")
+    if report.tumor_content:
+        print(f"  Tumor Content: {report.tumor_content}%")
+
+    print(f"\nFindings Summary ({len(report.findings)} total):")
+    print(f"  ├─ Variants: {len(variants)}")
+    for v in variants:
+        vaf_str = (
+            f", VAF: {v.variant_frequency*100:.1f}%" if v.variant_frequency else ""
+        )
+        print(f"  │  └─ {v.gene} {v.canonical_variant} ({v.origin.value}{vaf_str})")
+
+    print(f"  ├─ Copy Number Alterations: {len(cnas)}")
+    for c in cnas:
+        print(f"  │  └─ {c.gene} {c.alteration_direction.value}")
+
+    print(f"  ├─ Signatures: {len(signatures)}")
+    for s in signatures:
+        quant_str = (
+            f" ({s.quantitative_value} {s.unit})" if s.quantitative_value else ""
+        )
+        print(f"  │  └─ {s.signature_type.value}: {s.result}{quant_str}")
+
+    print(f"  ├─ IHC: {len(ihc_findings)}")
+    for i in ihc_findings:
+        if i.percentage_positive is not None:
+            print(f"  │  └─ {i.biomarker}: {i.percentage_positive}%")
+        elif i.intensity_score is not None:
+            print(f"  │  └─ {i.biomarker}: {i.intensity_score}+")
+        else:
+            print(f"  │  └─ {i.biomarker}")
+
+    if len(fusions) > 0:
+        print(f"  ├─ Fusions: {len(fusions)}")
+    if len(fish_findings) > 0:
+        print(f"  ├─ FISH: {len(fish_findings)}")
+    if len(wildtypes) > 0:
+        print(f"  └─ Wildtype: {len(wildtypes)}")
+
+    print("\n" + "=" * 80)
+    print("CLINICAL IMPLICATIONS")
+    print("=" * 80)
+    print("• KRAS G12D: Actionable mutation (consider KRAS G12D inhibitors)")
+    print("• TP53 R175H: Pathogenic mutation, associated with treatment resistance")
+    print("• TMB-High (18.9 mut/Mb): May benefit from immune checkpoint inhibitors")
+    print("• PD-L1 TPS 1%: Low expression, but TMB-high supports immunotherapy")
+    print("• MTAP/CDKN2A deletions: Cell cycle pathway alterations")
+    print("=" * 80)
+
     print("\nFull extraction:")
     print(result.extraction.model_dump_json(indent=2))

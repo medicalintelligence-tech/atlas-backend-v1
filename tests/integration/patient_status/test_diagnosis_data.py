@@ -1324,7 +1324,7 @@ async def test_extract_diagnosis_sample_002():
 
 # TODO
 # - setup 2 more evals for this (2 other progress notes)
-# - setup 1 eval for lines of therapy (can use these same notes)
+# - setup 1 eval for lines of therapy (can use these same notes) x
 # - setup 1 eval for molecular findings (need docs for that but should already have some)
 
 
@@ -1335,6 +1335,7 @@ async def test_extract_diagnosis_sample_002():
 # -- genomics you can do document by document for a single patient across multiple (need to give ability to return none if no relevant data is present / same for lines of therapy, aleready included in diagnosis data)
 
 # Plan
-# - setup 1 eval for lines of therapy
-# - setup 1 eval for molecular profile
+# - setup 1 eval for lines of therapy x
+# - setup 1 eval for molecular profile - PICKUP HERE TOMORROW TODO !!!!
+# - get anthropic model working with thinking and pydantic-ai (can't force tool calls is only thing but i think instructing the model that it has too should be fine - also do PromptedOutput response type instead of just the model)
 # - setup pipeline to try and do this for 10 patients and if it looks promising then do for a lot more
