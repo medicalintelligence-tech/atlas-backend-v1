@@ -528,8 +528,11 @@ Use YYYY-MM-DD format. If only month/year given, use first of month (e.g., "June
 - "breast" for breast cancer
 - Use "unknown" only for cancer of unknown primary (CUP)
 
-**Largest Lesion**: Extract the size of the largest measurable lesion.
+**Largest Lesion**: Extract the size of the CURRENT (most recent) largest measurable lesion.
 - CRITICAL: Always convert to millimeters (mm)
+- CRITICAL: Use the most recent measurement available
+- If multiple timepoints exist, use the lesion size from the most recent imaging
+- Consider ALL lesions (primary and metastatic) - extract whichever is largest currently
 - Common conversions: 1 cm = 10 mm, 2.5 cm = 25 mm, 0.5 cm = 5 mm
 - If given as "4.2 cm" → extract as 42 mm
 - If given as "25 mm" → extract as 25 mm
@@ -1054,7 +1057,7 @@ async def extract_diagnosis_async(
 # SAMPLE DATA
 # ============================================================================
 
-SAMPLE_DOCUMENT = """
+SAMPLE_DOCUMENT_001 = """
 UCSF Medical Center Oncology and Hematology
 Patient Name: Naaji Jr, Leif
 Patient Number: 0471662
@@ -1110,6 +1113,10 @@ RTC in 3 weeks post PET scan to discuss
 Signed Ivette Bauman on 6/27/2025 at 3:47 PM
 """
 
+SAMPLE_DOCUMENT_002 = """
+Scripps Memorial Hospital Oncology and Hematology, PLLC at The LUCILLE Packard 9242 Lansing Parkway, Marshfield, Ia, 38879 Phone: 605-811-5770 Fax: 605-811-9650 Patient Name: Lindner Jr, Tory Patient Number: 3312677 Date: 6/7/2025 Date Of Birth: 5/26/1954 PROGRESS NOTE Chief Complaint Mr. Lindner is a 70 year old male referred by Dr Candy for lung cancer. Smoker Lives in Farragut-Boykins 6/7/2025: Unfortunately his recent PET scan has shown metastatic disease He is here to discuss discuss results and next steps in management. He had a CT head today pending results Has complaints of left hip pain No complaints of chest pain, trouble breathing, abdominal pain etc. His weight is stable Active Problems Assessed \u00b7 C34.81 - Malignant neoplasm of overlapping sites of right bronchus and lung History of Present Illness Mr. Lindner is a 70 year old male with PMH of DLD, CAD with PCI, Afib/PPM and AICD, extensive smoking 1PPD for >45 yrs now quit post Bx 2 weeks ago. He was having cough with blood in sputum which prompted further evaluation with CXR with concerns followed by CT chest showing Rt lung mass s.p Bronch with EBUS taht showed Lung AdenoCa. Bx of Station 7 and $R Ln was negative for cancer although 4R LN was acellular No c.o weight loss, LOA, Headaches, dizziness, No SOB. Has cough ECOG 1. Retired. Worked as a maths teacher in Travel Agent business Work up: PFTs: Minimal obstructive lung defect. Diffusion capacity within normal limits 6/30/2024: CT chest with IV contrast: 3.6 x 3.8 cm noncalcified right hilar mass with mild peripheral post obstructive changes and minimal right upper lobe bronchiolitis. PET/CT advised 7/16/2024: CT chest noncontrast: Right hilar mass measuring 3.6 x 3.8 cm. Mass abuts right mainstem and right upper lobe bronchi. Stable mild right hilar lymphadenopathy. No significant mediastinal or axillary lymph nodes Bronchoscopy: Right lung lesion biopsied. Endoscopic bronchial ultrasound showed enlarged station 7 and station 4R lymph nodes and both well sampled 7/16/2024: Lung, right upper lobe needle biopsy: Non-small cell carcinoma consistent with adenocarcinoma with solid pattern. Lindner Jr, Tory DOB: 5/26/1954 (6584937) Page 1 of 7 Station 7 biopsy: Negative for tumor Station 4R, biopsy: Acellular specimen Omniseq: KRAS G12C mutation+, TMB: 18.9 (high), MSI-Stable. PDL TPS 1% (No EGFR, ALK, ROS, HEr2, MRT. ROS, RET, NTRK mutation) 7/31/2024: PET scan: Hypermetabolic right hilar mass measures over 4 cm [4.2 x 3.8 cm] with maximum SUV of 27. Mass invades the hilum. No second FDG avid pulmonary lesion. No hypermetabolic mediastinal lymph nodes. No evidence of metastatic disease 8/13/2024: CT head with contrast: No acute intracranial abnormality TB discussion 8/12/24:Likely will need Pneumonectomy as SX plan after perioperative Chemo immunotherapy. Cardiac risks as well Plan : Chemo immunotherapy for 4 cycles .reassess with Scans and Present at Tumor board prior to Sx planning Interval History After 4 cycles of chemoimmunotherapy 11/16/2024: Decrease size and FDG uptake of the right hilar mass now measuring 2.2 cm with SUV uptake of 8.3 previously measured 4.2 cm with uptake of 27. New focal FDG uptake in the anterior cortex of the sternal manubrium without CT correlate, possible metastasis. 11/24/2024: CT chest with contrast: Right hilar mass with postobstructive atelectasis or scarring. Mass measures 2.2 cm. No mediastinal or left hilar adenopathy. Previously noted FDG uptake in the anterior cortex of the left manubrium without definite correlate on CT TB discussion 10/2024: Cant bx the Sternal area, would be blind and might not yield the needed info Past Medical History Narrative: DLD CAD with 2 PCI 1995 and another in 2010 Ischemic cardiomyopathy/ventricular tachycardia s/p AICD/pacemaker Afib s/p Ablation Surgical History No previous treatment history has been entered for this patient. Current Medications Added medication: prednisone 2 mg tabletdelayed release. Continued medications: Accu-Chek Guide Glucose Meter, Accu-Chek Guide test strips, Accu-Chek Softclix Lancets, atorvastatin 40 mg tablet, Compazine 10 mg tablet, ezetimibe 10 mg tablet, folic acid 1 mg tablet, Imodium A-D 2 mg tablet, lidocaine-prilocaine 2.5 %-2.5 % topical cream, lidocaine-prilocaine 2.5 %-2.5 % topical cream, metformin 500 mg tablet, metoprolol succinate ER 100 mg tabletextended release 24 hr, Nitrostat 0.4 mg sublingual tablet, ondansetron HCI 8 mg tablet, Plavix 75 mg tablet, Senna-S 8.6 mg-50 mg tablet. Discontinued medications: hydrocortisone 10 mg tablet, prednisone 50 mg tablet. Allergies penicillin Family History of Cancer Half-sister had ?Lymphoma M. Uncle Lung cancer Social History: 1PPD cigarettes for 45 yrs, quit 20 days ago. 15 beers a week now (was drinking 6 beers a day prior to 1 year) Alcohol Patient advises current alcohol user. dedrick. Lindner Jr, Tory DOB: 5/26/1954 (6584937) Page 2 of 7 Marital Status Patient is married. Living Arrangement Patient lives with spouse. Occupation Retired. Worked as a maths teacher in Share dealer Tobacco Use Past tobacco smoker. Smokes tobacco daily. Tobacco Use Continued: Number of years of use: 45 years. Patient has a 45 pack year smoking history. (CQM) Patient Stated Pain: Pain Description: 5 - Very distressing. Left buttocks Review of Systems 14 point review of systems is negative except as mentioned in HPI. Vitals Vitals on 6/7/2025 1:02:00 PM: Height=67in, Weight=171lb, Temp=98.4f, Heart rate=79bpm, Respiration rate=16, SystolicBP=127, DiastolicBP=72, Pulse Ox=99% Physical Exam Physical Examination General: Well developed, Thin Built Neck: Neck is supple. Chest: Symmetrical. PPM/AICD+ Lungs are clear Cardiac: normal rate; regular rhythm. Abdomen: soft, non tender, non distended Back: No tenderness to palpation. Extremities: No edema. No cyanosis. Musculoskeletal: Normal range of motion. Neuro/Psych: Alert , oriented. Good understanding of our conversation today. Performance Scale ECOG 1: Restricted in physically strenuous activity but ambulatory and able to carry out work of a light or sedentary nature, e.g., light house work, office work Lab Results Lab results for 5/17/2025 Result Value Units Range Comment WBC 7.10 x10E3/uL 4.8- 10.8 RBC 4.02 x10E6/uL 4.7-6.1 Hgb 12.5 g/dL 14-18 HCT 38.5 % 42-52 MCV 95.7 fL 80-94 MCH 31.0 pg 27-31 MCHC 32.4 g/dL 33-37 Lindner Jr, Tory DOB: 5/26/1954 (3312677) Page 3 of 7 RDW Ratio 14.0 % 11.5- 14.5 Platelet # 276 x10E3/uL 130- 400 MPV 9.6 fL 7.2- 11.1 Neut # 5.770 x10E3/uL 2.496- 8.424 Neut % 81.2 % 50-70 Lymph% 13.3 % 20-44 MONO% 3.8 % 2-11 EOS% 1.4 % 0-5 BASO% 0.3 % 0-1 Lymph# 0.900 x10E3/uL 0.96- 4.752 MONO# 0.270 x10E3/uL 0.096- 1.188 EOS# 0.100 x10E3/uL 0-0.54 BASO# 0.020 x10E3/uL 0-0.108 Sodium 137 mmol/L 136- 145 Potassium 4.4 mmol/L 3.5-5.1 Chloride 100 mmol/L 98-107 CO2 25 mmol/L 21-32 Glucose 186 mg/dL 70-110 BUN 10 mg/dL 7-18 Creat 0.81 mg/dL 0.7-1.3 BUN Creat Ratio 12 Ratio Calcium 8.7 mg/dL 8.5- 10.1 Total Protein 6.9 g/dL 6.4-8.2 Albumin 3.4 g/dL 3.4-5 Globulin 3.5 g/dL 2.3-3.5 Total Bili 0.64 mg/dL 0-1 Alk Phos 111 U/L 46-116 ALT 38 U/L 12-78 AST 26 U/L 15-37 eGFR (African American) 114 mL/min/1.73m2 eGFR (Non-Afr. 94 mL/min/1.73m2 Lindner Jr, Tory DOB: 5/26/1954 (3312677) Page 4 of 7 American) T4 Free 1.26 ng/dL 0.89- 1.76 This test was performed using the Siemens Centaur XPT competitive immunoassay using direct chemiluminescent technology. Values obtained from different assay methods cannot be used interchangeably. FT4 levels, regardless of value, should not be interpreted as absolute evidence of the presence or absence of disease. TSH 1.396 mIU/L 0.35- 5.5 This test was performed using the Siemens Centaur XPT third- generation assay that employs anti-FITC monoclonal antibody covalently bound to paramagnetic particles, an FITC-labeled anti-TSH capture monoclonal antibody, and a tracer concisting of a proprietary acridinium ester and anti-TSH mAb antibody conjugated to bovine serum albumin for chemiluminsecent detection. Vales obtained from different assay methods cannot be used interchangeably. TSH levels, regardless of value, should not be interpreted as absolute evidence of the presence or absence of disease. Creatine Kinase 28 U/L 39-308 ACTH 6 pg/mL 6-50 (Note)Reference range applies only to specimens collected between 7am-10am.MDFmed 1594 Midcrest Place, Suite Mozelle IA 98248512-399-2729 Ricky K. Aitken, MD, PhD Cortisol, Random 19.40 ug/dL 5.27- 22.45 Please Note: The reference interval and flagging forthis test is for an AM collection. If this is a PM collection please use: Cortisol PM: 3.44 - 16.76 ug/dLThe ADVIA Centaur Cortisol (COR) assay is a competitive immunoassay using direct chemiluminescent technology. Cortisol in the patient sample competes with acridinium ester-labeled cortisol in the Lite Reagent for binding to polyclonal rabbit anti-cortisol antibody in the Solid Phase. The polyclonal rabbit anti-cortisol antibody is bound to monoclonal mouse anti-rabbit antibody, which is covalently coupled to paramagnetic particles in the Solid Phase. Radiology Radiology results were reviewed and discussed with the patient. Print? Date of Doc. Name MD Interpretation Comment 5/25/2025 PET/CT Impression 1. Rt Lung adenocarcinoma in a Chronic smoker Dx 06/2024: Mass measures 4.2cm on PET and SUV 27. Bronch showed enlarged station 7 and station 4R lymph nodes(acellular) s/p Bx: negative: cT2b NoM0: AJCC 8th edition Stage 2A Omniseq: KRAS G12C mutation+, TMB: 18.9 (high), MSIStable. PDL TPS 1% (No EGFR, ALK, ROS, HEr2, MRT. ROS, RET, NTRK mutation) Ct head with contrast(unable to do MRI due to PPM): no mets Lindner Jr, Tory DOB: 5/26/1954 (6584937) Page 5 of 7 Treatments: -- Neoadjuvant Cis-Alimta-Keytruda 4cycles 08/28/24-10/30/24 -- Completed neoadjuvant chemoimmunotherapy. s/p PET with significant decrease in size and uptake of the Rt UL lung mass. No adenopathy -- Noted was SUV uptake in sternum, s/p CT chest: No sternal lesion was noted --- Unable to undergo lobectomy vs pneumonectomy Surgery due to cardiac issues that needs stent placement Dr Lynton --- Completed IMRT to Lung: 60Gy in 15Fx completed 02/2 Dr Qurbanov with ongoing Keytruda until 5/17/25 (ISABR trial safety of immunotherapy) -- Noted new RT adrenal mets. Lt gluteal met on PET 05/2025 Discussed that this is concerning for metastatic disease and treatment is not curable. Ordered for CT head with contrast : pending Ordered for Bx of rt adrenal nodule/Lt gluteal met whichever is easily accessible : Scheduled for 6/30/25 Will DC keytruda. Noted KRAS G12c mutation: recommend next line with Adagrasib 600mg bid (Median PFS 6.5mon, ORR 43%, OS 12.6mon, intracranial response rate 33%) Monitor LFTS, Qtc Will order Signatera on the new Metastatic bx 2. CAD with PCI in 1995 and 2010: Dr Briggs Toledano retired. EP is Dr Vos. Going to see Cardio same office. He is not on any diuretics. No known CHF No latest Echo.Follows with Dr Saarinen s/p Stress test Noted CAD with restenosis with s/p PCI 12/31/24 Also Low EF on Echo Notes requested 3. Treatment related adverse effects --- Symptomatic Adrenal insufficiency : 04/2025 : Low cortisol, normal ACTH : On Hydrocortisone 10mg bid. s/p Endocrine Dr Harley : s/p ACTH stim test : Will get latest notes Now on prednisone 4 mg daily, managed by endocrine 4. Alcohol use: Drinks 15 beers a week now. Discussed cessation. 5. Former Smoker >45 pack yrs. Quit June 2024 Discussed side effects of Adagrasib including but not limited to GI symptoms such as nausea vomiting, diarrhea, hepatotoxicity, renal toxicity, cardiac complications such as elevated QTc, risk of infections , risk of pneumonitis etc. Reading material provided Plan Unfortunately noted to have metastatic disease with right 3 cm adrenal met and left gluteal met Pending biopsy to confirm metastatic disease S/p CT head with contrast: Pending results Recommend next line with Adagrasib 600mg bid. Qtc today and every visit for now. Monitor LFTs DC Keytruda Signatera on new metastatic biopsy RTC in 4 weeks with labs, Qtc and Bx results Total Time Spent on Date of Encounter I spent 42 minutes in reviewing the record, seeing the patient and documenting in the medical record. Fax to: Ray Lynton~(605)727-5084;Carmine S. Rennell~(605)197-8280;Kehlani Harley~(605)727-3255;Paul Qurbanov~(605)811- 3986;Hepburn Candy Knudsen~(605)767-8384; Lindner Jr, Tory DOB: 5/26/1954 (6584937) Page 6 of 7 Signed Kendall Devyn Morin on 6/7/2025 at 1:53 PM Lindner Jr, Tory DOB: 5/26/1954 (6584937) Page 7 of 7
+"""
+
 
 # ============================================================================
 # TEST FUNCTIONS
@@ -1117,10 +1124,10 @@ Signed Ivette Bauman on 6/27/2025 at 3:47 PM
 
 
 @pytest.mark.integration
-async def test_extract_diagnosis():
-    """Integration test for diagnosis extraction with real API"""
+async def test_extract_diagnosis_sample_001():
+    """Integration test for diagnosis extraction with real API - Sample 001"""
     # Run extraction
-    result = await extract_diagnosis_async(SAMPLE_DOCUMENT, max_iterations=3)
+    result = await extract_diagnosis_async(SAMPLE_DOCUMENT_001, max_iterations=3)
 
     # Verify result
     assert result.success is True
@@ -1163,3 +1170,153 @@ async def test_extract_diagnosis():
     print("=" * 80)
     print(f"\nExtracted diagnoses:")
     print(result.extraction.model_dump_json(indent=2))
+
+
+@pytest.mark.integration
+async def test_extract_diagnosis_sample_002():
+    """
+    Integration test for diagnosis extraction with real API - Sample 002
+
+    Clinical scenario: Mr. Lindner with right lung adenocarcinoma showing
+    metastatic progression to adrenal gland and gluteal muscle after initial
+    neoadjuvant chemoimmunotherapy and radiation.
+
+    Key features to validate:
+    - Primary lung adenocarcinoma with KRAS G12C mutation
+    - Initial presentation: 4.2 cm right hilar mass (7/31/2024)
+    - Post-treatment decrease to 2.2 cm (11/16/2024)
+    - Metastatic progression documented (5/25/2025 PET):
+      * 3 cm right adrenal metastasis (CURRENT LARGEST LESION)
+      * Left gluteal metastasis
+    - TMB-high (18.9), MSI-stable, PD-L1 TPS 1%
+    - Document date: 6/7/2025
+    """
+    # Run extraction
+    result = await extract_diagnosis_async(SAMPLE_DOCUMENT_002, max_iterations=3)
+
+    # Verify result
+    assert result.success is True
+    assert result.extraction is not None
+
+    # Verify we have exactly one primary diagnosis (lung adenocarcinoma with metastases)
+    diagnoses = result.extraction.diagnoses
+    assert (
+        len(diagnoses) == 1
+    ), "Should have one primary cancer with metastatic sites, not multiple primaries"
+
+    diagnosis = diagnoses[0]
+
+    # Check diagnosis type and classification
+    assert (
+        diagnosis.type == DiagnosisType.SOLID_TUMOR
+    ), "Should be classified as solid tumor"
+    assert (
+        "adenocarcinoma" in diagnosis.histology.lower()
+    ), "Histology should contain 'adenocarcinoma'"
+
+    # Check diagnosis date (initial biopsy date)
+    assert diagnosis.diagnosis_date == date(
+        2024, 7, 16
+    ), "Diagnosis date should be 7/16/2024 (initial biopsy)"
+
+    # Check status - patient has metastatic disease
+    assert diagnosis.status in [
+        DiagnosisStatus.ACTIVE,
+        DiagnosisStatus.PROGRESSION,
+    ], "Status should be active or progression given metastatic disease"
+
+    # Check solid tumor specific data
+    assert isinstance(
+        diagnosis.disease_data, SolidTumor
+    ), "Disease data should be SolidTumor type"
+    solid_tumor = diagnosis.disease_data
+    assert (
+        solid_tumor.primary_site == AnatomicalSite.LUNG
+    ), "Primary site should be lung"
+
+    # Check largest lesion size
+    # Clinical timeline:
+    # - 7/31/2024: Initial 4.2 cm = 42 mm right hilar mass
+    # - 11/16/2024: Post-treatment 2.2 cm = 22 mm (decreased primary)
+    # - 5/25/2025: New 3 cm = 30 mm right adrenal metastasis (MOST RECENT)
+    # - Document date: 6/7/2025
+    # The CURRENT largest lesion should be the 3 cm adrenal met (most recent imaging)
+    assert solid_tumor.largest_lesion is not None, "Largest lesion should be documented"
+
+    lesion_size_mm = solid_tumor.largest_lesion.value
+    # Should be 30 mm (3 cm adrenal met) as this is the most recent measurement
+    # Allow small tolerance for rounding
+    assert (
+        abs(lesion_size_mm - 30.0) < 1.0
+    ), f"Current largest lesion should be 30 mm (3 cm adrenal met from most recent PET 5/25/2025), but got {lesion_size_mm} mm"
+
+    # Critical: Check for metastatic disease
+    assert (
+        solid_tumor.metastatic_sites is not None
+    ), "Metastatic sites should be documented"
+    assert (
+        len(solid_tumor.metastatic_sites) >= 1
+    ), "Should have at least one metastatic site"
+
+    # Check for specific metastatic sites
+    metastatic_site_values = [site.value for site in solid_tumor.metastatic_sites]
+
+    # Should include adrenal metastasis (documented as "RT adrenal mets" and "right 3 cm adrenal met")
+    assert (
+        AnatomicalSite.ADRENAL.value in metastatic_site_values
+    ), "Should document right adrenal metastasis"
+
+    # May include soft tissue for gluteal metastasis (left gluteal met)
+    # This is reasonable as gluteal muscles are soft tissue
+    if AnatomicalSite.SOFT_TISSUE.value in metastatic_site_values:
+        print(
+            "✓ Correctly identified left gluteal metastasis as soft tissue metastasis"
+        )
+
+    # Check supporting evidence exists and is comprehensive
+    assert len(diagnosis.supporting_evidence) > 0, "Should have supporting evidence"
+
+    # Evidence should reference key clinical findings
+    evidence_text = " ".join(diagnosis.supporting_evidence).lower()
+    assert any(
+        keyword in evidence_text for keyword in ["metastatic", "metastasis", "met"]
+    ), "Evidence should mention metastatic disease"
+
+    # Check confidence score
+    assert (
+        0.0 <= diagnosis.confidence_score <= 1.0
+    ), "Confidence should be between 0 and 1"
+
+    # Given the complexity of this case with progression, confidence might be moderate to high
+    # but not necessarily perfect due to multiple timepoints
+    assert (
+        diagnosis.confidence_score >= 0.5
+    ), "Confidence should be at least moderate given clear documentation"
+
+    # Clinical validation: Document key molecular features in notes if captured
+    if diagnosis.notes:
+        notes_lower = diagnosis.notes.lower()
+        # May mention KRAS G12C, TMB-high, or treatment progression
+        clinical_features = ["kras", "tmb", "progression", "metastatic"]
+        if any(feature in notes_lower for feature in clinical_features):
+            print("✓ Notes contain relevant molecular or clinical features")
+
+    print("\n" + "=" * 80)
+    print("TEST PASSED - SAMPLE 002 (METASTATIC PROGRESSION)")
+    print("=" * 80)
+    print(f"\nExtracted diagnoses:")
+    print(result.extraction.model_dump_json(indent=2))
+    print("\n" + "=" * 80)
+    print("CLINICAL SUMMARY")
+    print("=" * 80)
+    print(f"Primary Site: {solid_tumor.primary_site.value}")
+    print(f"Histology: {diagnosis.histology}")
+    print(
+        f"Largest Lesion: {solid_tumor.largest_lesion.value if solid_tumor.largest_lesion else 'Not documented'} mm"
+    )
+    print(
+        f"Metastatic Sites: {', '.join([s.value for s in solid_tumor.metastatic_sites]) if solid_tumor.metastatic_sites else 'None'}"
+    )
+    print(f"Status: {diagnosis.status.value if diagnosis.status else 'Not documented'}")
+    print(f"Confidence: {diagnosis.confidence_score}")
+    print("=" * 80)
