@@ -112,15 +112,15 @@ class ModelConfig:
 def wrap_output_type(output_type, requires_prompted_output: bool):
     """
     Conditionally wrap output type with PromptedOutput when required.
-    
+
     Some model configurations (e.g., Anthropic with extended thinking enabled)
     don't support structured output tools and require PromptedOutput instead.
     This is an API restriction, not a capability difference.
-    
+
     Args:
         output_type: The Pydantic model class for structured output
         requires_prompted_output: Whether the model requires PromptedOutput wrapper
-        
+
     Returns:
         PromptedOutput(output_type) if requires_prompted_output, else output_type
     """
@@ -743,11 +743,11 @@ def get_default_model() -> ModelConfig:
 def get_anthropic_model(enable_thinking: bool = True) -> ModelConfig:
     """
     Get Anthropic Claude model configuration
-    
+
     Args:
         enable_thinking: Whether to enable Anthropic's extended thinking mode (default: True)
                         When enabled, PromptedOutput will be required instead of tool calls
-        
+
     Returns:
         ModelConfig with model and requires_prompted_output flag
     """
@@ -761,13 +761,13 @@ def get_anthropic_model(enable_thinking: bool = True) -> ModelConfig:
         )
     else:
         model_settings = AnthropicModelSettings(max_tokens=25000)
-    
+
     model = AnthropicModel(
         "claude-sonnet-4-5",
         provider=AnthropicProvider(api_key=settings.anthropic_api_key),
         settings=model_settings,
     )
-    
+
     # Anthropic with thinking enabled requires PromptedOutput
     return ModelConfig(model=model, requires_prompted_output=enable_thinking)
 
@@ -775,7 +775,7 @@ def get_anthropic_model(enable_thinking: bool = True) -> ModelConfig:
 def get_openai_model() -> ModelConfig:
     """
     Get OpenAI model configuration
-    
+
     Returns:
         ModelConfig with model (doesn't require PromptedOutput)
     """
@@ -788,7 +788,7 @@ def get_openai_model() -> ModelConfig:
         provider=OpenAIProvider(api_key=settings.openai_api_key),
         settings=model_settings,
     )
-    
+
     return ModelConfig(model=model, requires_prompted_output=False)
 
 
@@ -796,7 +796,9 @@ def create_extraction_agent(model_config: ModelConfig) -> Agent:
     """Create extraction agent for generating markdown from progress notes"""
     return Agent(
         model=model_config.model,
-        output_type=wrap_output_type(MarkdownOutput, model_config.requires_prompted_output),
+        output_type=wrap_output_type(
+            MarkdownOutput, model_config.requires_prompted_output
+        ),
         system_prompt=EXTRACTION_SYSTEM_PROMPT,
     )
 
@@ -805,7 +807,9 @@ def create_validation_agent(model_config: ModelConfig) -> Agent:
     """Create validation agent for checking markdown accuracy"""
     validator = Agent(
         model=model_config.model,
-        output_type=wrap_output_type(ValidationResult, model_config.requires_prompted_output),
+        output_type=wrap_output_type(
+            ValidationResult, model_config.requires_prompted_output
+        ),
         system_prompt=VALIDATION_SYSTEM_PROMPT,
         deps_type=ValidationState,
     )
@@ -835,7 +839,9 @@ def create_correction_agent(model_config: ModelConfig) -> Agent:
     """Create correction agent for generating search/replace operations"""
     correction_agent = Agent(
         model=model_config.model,
-        output_type=wrap_output_type(ToolCallPlan, model_config.requires_prompted_output),
+        output_type=wrap_output_type(
+            ToolCallPlan, model_config.requires_prompted_output
+        ),
         system_prompt=CORRECTION_SYSTEM_PROMPT,
         deps_type=ValidationState,
     )
@@ -886,11 +892,15 @@ def apply_corrections(
     return current_markdown, success_flags
 
 
-async def extract_to_pydantic(markdown: str, model_config: ModelConfig) -> LinesOfTherapyExtraction:
+async def extract_to_pydantic(
+    markdown: str, model_config: ModelConfig
+) -> LinesOfTherapyExtraction:
     """Convert validated markdown to Pydantic model"""
     extraction_agent = Agent(
         model=model_config.model,
-        output_type=wrap_output_type(LinesOfTherapyExtraction, model_config.requires_prompted_output),
+        output_type=wrap_output_type(
+            LinesOfTherapyExtraction, model_config.requires_prompted_output
+        ),
         system_prompt="You are a precise data parser. Convert the provided markdown representation of lines of therapy into the structured LinesOfTherapyExtraction model. Preserve all information accurately.",
     )
 
@@ -932,7 +942,9 @@ async def extract_lines_of_therapy_async(
     print("=" * 80)
     print("🚀 Starting Lines of Therapy Extraction")
     print(f"Model: {model_config.model.__class__.__name__}")
-    print(f"Output Type: {'PromptedOutput' if model_config.requires_prompted_output else 'Structured Tools'}")
+    print(
+        f"Output Type: {'PromptedOutput' if model_config.requires_prompted_output else 'Structured Tools'}"
+    )
     print("=" * 80)
 
     # Step 1: Generate initial markdown
@@ -1237,8 +1249,8 @@ async def test_extract_lines_of_therapy_sample_002():
     ), f"Regimen should include pembrolizumab/keytruda: {line1.regimen_name}"
 
     assert (
-        line1.disease_setting == DiseaseSettingEnum.LOCALLY_ADVANCED
-    ), "Line 1 disease setting should be locally-advanced (4cm hilar mass invading hilum, requiring pneumonectomy)"
+        line1.disease_setting == DiseaseSettingEnum.NON_METASTATIC
+    ), "Line 1 disease setting should be non-metastatic (Stage 2A resectable disease, surgery planned but cancelled due to cardiac issues)"
     assert (
         line1.treatment_intent == TreatmentIntentEnum.NEOADJUVANT
     ), "Line 1 intent should be neoadjuvant"
