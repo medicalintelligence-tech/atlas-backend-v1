@@ -25,7 +25,7 @@ import json
 # ============================================================================
 
 
-class DiagnosisTypeEnum(str, Enum):
+class DiagnosisType(str, Enum):
     """Type of cancer diagnosis"""
 
     SOLID_TUMOR = "solid_tumor"
@@ -33,7 +33,7 @@ class DiagnosisTypeEnum(str, Enum):
     NEUROENDOCRINE = "neuroendocrine"
 
 
-class DiagnosisStatusEnum(str, Enum):
+class DiagnosisStatus(str, Enum):
     """Current status of the cancer diagnosis"""
 
     ACTIVE = "active"
@@ -44,7 +44,7 @@ class DiagnosisStatusEnum(str, Enum):
     RECURRENCE = "recurrence"
 
 
-class AnatomicalSiteEnum(str, Enum):
+class AnatomicalSite(str, Enum):
     """Anatomical sites - used for both primary sites and metastatic sites"""
 
     # Head & Neck
@@ -120,11 +120,11 @@ class AnatomicalSiteEnum(str, Enum):
     PERITONEUM = "peritoneum"
     ADRENAL = "adrenal"
     SKIN = "skin"
-    UNKNOWN_PRIMARY = "unknown_primary"
+    UNKNOWN = "unknown"
     OTHER = "other"
 
 
-class HematologicSubtypeEnum(str, Enum):
+class HematologicSubtype(str, Enum):
     """Hematologic malignancy subtypes"""
 
     AML = "aml"
@@ -138,7 +138,7 @@ class HematologicSubtypeEnum(str, Enum):
     OTHER = "other"
 
 
-class NeuroendocrineGradeEnum(str, Enum):
+class NeuroendocrineGrade(str, Enum):
     """Neuroendocrine tumor grading based on Ki-67 proliferation index"""
 
     G1 = "g1"  # Ki-67 <3%
@@ -193,7 +193,7 @@ class LargestLesion(BaseModel):
 class SolidTumor(BaseModel):
     """Solid tumor specific data"""
 
-    primary_site: AnatomicalSiteEnum = Field(
+    primary_site: AnatomicalSite = Field(
         description="Primary anatomical site of the tumor"
     )
 
@@ -201,7 +201,7 @@ class SolidTumor(BaseModel):
         default=None, description="Largest measurable lesion (always in millimeters)"
     )
 
-    metastatic_sites: Optional[List[AnatomicalSiteEnum]] = Field(
+    metastatic_sites: Optional[List[AnatomicalSite]] = Field(
         default=None, description="Sites of metastatic disease"
     )
 
@@ -209,35 +209,40 @@ class SolidTumor(BaseModel):
 class Hematologic(BaseModel):
     """Hematologic malignancy specific data"""
 
-    disease_subtype: HematologicSubtypeEnum = Field(
+    disease_subtype: HematologicSubtype = Field(
         description="Specific subtype of hematologic malignancy"
     )
 
-    disease_burden: Union[LeukemiaBurden, LymphomaBurden, MyelomaBurden] = Field(
-        description="Disease burden metrics based on subtype"
+    disease_burden: Optional[Union[LeukemiaBurden, LymphomaBurden, MyelomaBurden]] = (
+        Field(
+            default=None,
+            description="Disease burden metrics based on subtype. Use null if not found.",
+        )
     )
 
 
 class Neuroendocrine(BaseModel):
     """Neuroendocrine tumor specific data"""
 
-    primary_site: AnatomicalSiteEnum = Field(
+    primary_site: AnatomicalSite = Field(
         description="Primary site of neuroendocrine tumor"
     )
 
-    grade: NeuroendocrineGradeEnum = Field(
-        description="WHO grade based on Ki-67 proliferation index"
+    grade: Optional[NeuroendocrineGrade] = Field(
+        default=None,
+        description="WHO grade based on Ki-67 proliferation index. Use null if not found.",
     )
 
-    functional_status: bool = Field(
-        description="Whether tumor is hormonally active/functional"
+    functional_status: Optional[bool] = Field(
+        default=None,
+        description="Whether tumor is hormonally active/functional. Use null if not found.",
     )
 
     chromogranin_a: Optional[float] = Field(
         default=None, description="Chromogranin A level in ng/mL", ge=0.0
     )
 
-    metastatic_sites: Optional[List[AnatomicalSiteEnum]] = Field(
+    metastatic_sites: Optional[List[AnatomicalSite]] = Field(
         default=None, description="Sites of metastatic disease"
     )
 
@@ -250,16 +255,23 @@ class Neuroendocrine(BaseModel):
 class BaseDiagnosis(BaseModel):
     """Complete diagnosis information"""
 
-    type: DiagnosisTypeEnum = Field(description="Type of cancer diagnosis")
+    type: DiagnosisType = Field(description="Type of cancer diagnosis")
 
-    histology: str = Field(
-        description="Histologic classification using WHO standard terminology (lowercase, full terms, no abbreviations)",
+    histology: Optional[str] = Field(
+        default=None,
+        description="Histologic classification using WHO standard terminology (lowercase, full terms, no abbreviations). Use null if not found.",
         min_length=1,
     )
 
-    diagnosis_date: date = Field(description="Date of diagnosis")
+    diagnosis_date: Optional[date] = Field(
+        default=None,
+        description="Date of diagnosis. Use null if not found.",
+    )
 
-    status: DiagnosisStatusEnum = Field(description="Current status of the cancer")
+    status: Optional[DiagnosisStatus] = Field(
+        default=None,
+        description="Current status of the cancer. Use null if not found.",
+    )
 
     disease_data: Union[SolidTumor, Hematologic, Neuroendocrine] = Field(
         description="Disease-specific data based on diagnosis type"
@@ -279,7 +291,10 @@ class BaseDiagnosis(BaseModel):
 class DiagnosisExtraction(BaseModel):
     """Complete extraction of diagnosis data"""
 
-    diagnosis: BaseDiagnosis = Field(description="The extracted diagnosis information")
+    diagnoses: List[BaseDiagnosis] = Field(
+        default_factory=list,
+        description="List of all cancer diagnoses found. Empty list if no diagnosis data in document.",
+    )
 
     extraction_challenges: Optional[List[str]] = Field(
         default=None, description="Brief notes on any extraction difficulties"
@@ -442,6 +457,16 @@ class ExtractionResult(BaseModel):
 
 EXTRACTION_SYSTEM_PROMPT = """You are an expert medical data extraction specialist. Your task is to extract structured diagnosis information from medical documents and represent it in a structured markdown format.
 
+## Multiple Primaries and Empty Cases
+
+**Multiple Primary Cancers**: A patient may have multiple distinct primary cancers (either synchronous - diagnosed at same time, or metachronous - diagnosed at different times). Extract each distinct primary cancer as a separate diagnosis.
+
+**Key Distinctions**:
+- **Metastases vs Second Primary**: Liver metastases from lung adenocarcinoma = ONE diagnosis with metastatic_sites=[liver]. Lung adenocarcinoma + separate prostate adenocarcinoma = TWO diagnoses.
+- **Recurrence**: If a cancer recurs after remission, it's still the same primary - use status="recurrence"
+
+**No Diagnosis Data**: If the document contains no cancer diagnosis information (e.g., screening visit, benign findings, non-oncology consult, purely administrative note), return an empty diagnosis list. This is a valid outcome.
+
 ## Diagnosis Type Classification
 
 Classify each diagnosis into one of three types:
@@ -471,6 +496,8 @@ Common examples:
 
 If only generic diagnosis without histology: use the disease name in lowercase (e.g., "lung cancer", "breast cancer")
 
+**If histology is not explicitly stated in the document, use null. Do not infer.**
+
 ## Diagnosis Date
 
 Extract the date when the cancer diagnosis was first made. This is usually:
@@ -479,6 +506,8 @@ Extract the date when the cancer diagnosis was first made. This is usually:
 - Explicitly stated "diagnosed in [month/year]"
 
 Use YYYY-MM-DD format. If only month/year given, use first of month (e.g., "June 2023" = "2023-06-01").
+
+**If diagnosis date is not explicitly stated in the document, use null. Do not infer.**
 
 ## Diagnosis Status
 
@@ -489,13 +518,15 @@ Use YYYY-MM-DD format. If only month/year given, use first of month (e.g., "June
 **progression**: Cancer is growing or spreading despite treatment
 **recurrence**: Cancer returned after previous complete remission
 
+**If current diagnosis status is not explicitly stated in the document, use null. Do not infer.**
+
 ## Solid Tumor Specific Fields
 
 **Primary Site**: Use the anatomical site enum value. Be as specific as possible:
 - "lung" for lung cancer
 - "colon" vs "rectum" (not just "colorectal")
 - "breast" for breast cancer
-- Use "unknown_primary" only for cancer of unknown primary (CUP)
+- Use "unknown" only for cancer of unknown primary (CUP)
 
 **Largest Lesion**: Extract the size of the largest measurable lesion.
 - CRITICAL: Always convert to millimeters (mm)
@@ -528,6 +559,8 @@ For Multiple Myeloma:
 - m_protein: Extract M-spike value in g/dL from serum protein electrophoresis
 - Look for "M-protein 2.5 g/dL", "M-spike of 3.2"
 
+**If disease burden metrics are not explicitly stated in the document, use null. Do not infer.**
+
 ## Neuroendocrine Specific Fields
 
 **Primary Site**: Use anatomical site enum (pancreas, small_intestine, lung, stomach, rectum, appendix, etc.)
@@ -538,10 +571,14 @@ For Multiple Myeloma:
 - g3: Ki-67 >20% (poorly differentiated)
 - nec: Neuroendocrine carcinoma (high grade, aggressive, often called "small cell" or "large cell NEC")
 
+**If grade is not explicitly stated in the document, use null. Do not infer.**
+
 **Functional Status**: 
 - true: Tumor secretes hormones causing symptoms (carcinoid syndrome, insulinoma, gastrinoma, etc.)
 - false: Non-functional, no hormone-related symptoms
 - Look for mentions of flushing, diarrhea, hypoglycemia, or specific hormone elevations
+
+**If functional status is not explicitly stated in the document, use null. Do not infer.**
 
 **Chromogranin A**: Tumor marker for NETs
 - Extract value in ng/mL if reported
@@ -567,25 +604,33 @@ Include relevant excerpts demonstrating:
 
 ## Output Format
 
-Generate a markdown document with the following structure:
+**For documents with NO diagnosis data:**
 ```
-## Diagnosis
+No cancer diagnosis information found in document.
+```
+
+**For documents with one or more diagnoses:**
+
+Generate a markdown document with numbered diagnosis sections. For a single diagnosis, use "## Diagnosis 1". For multiple primaries, use "## Diagnosis 1", "## Diagnosis 2", etc.
+
+```
+## Diagnosis 1
 
 Type: [solid_tumor|hematologic|neuroendocrine]
-Histology: [WHO standard terminology, lowercase]
-Diagnosis Date: YYYY-MM-DD
-Status: [active|complete_remission|partial_remission|stable|progression|recurrence]
+Histology: [WHO standard terminology, lowercase] or null
+Diagnosis Date: YYYY-MM-DD or null
+Status: [active|complete_remission|partial_remission|stable|progression|recurrence] or null
 
 ### Disease-Specific Data
 
 [For Solid Tumor:]
 Primary Site: [anatomical_site]
-Largest Lesion: [value in mm] mm
+Largest Lesion: [value in mm] mm or null
 Metastatic Sites: [site1, site2, site3] or null
 
 [For Hematologic:]
 Disease Subtype: [aml|all|cll|cml|multiple_myeloma|nhl|hodgkin|mds|other]
-Disease Burden:
+Disease Burden: null or:
   - Blast Percentage: [value]% (for leukemias)
   OR
   - Bulky Disease: [true|false]
@@ -595,8 +640,8 @@ Disease Burden:
 
 [For Neuroendocrine:]
 Primary Site: [anatomical_site]
-Grade: [g1|g2|g3|nec]
-Functional Status: [true|false]
+Grade: [g1|g2|g3|nec] or null
+Functional Status: [true|false] or null
 Chromogranin A: [value] ng/mL or null
 Metastatic Sites: [site1, site2] or null
 
@@ -606,12 +651,21 @@ Supporting Evidence:
 
 Confidence: [0.0-1.0]
 Notes: [optional clarifications]
+
+## Diagnosis 2
+[... repeat structure if additional primaries exist ...]
 ```
 """
 
 VALIDATION_SYSTEM_PROMPT = """You are a meticulous validator checking extracted diagnosis data. Your job is to verify that the markdown representation accurately captures all relevant information from the original medical document.
 
-## Validation Checks
+## Multiple Diagnoses and Empty Cases
+
+1. **Multiple Primaries**: If the patient has multiple primary cancers, ensure each is captured as a separate numbered diagnosis section
+2. **Empty Documents**: If there's truly no cancer diagnosis information, confirm the markdown says "No cancer diagnosis information found in document."
+3. **Metastases vs Second Primary**: Verify metastases are listed within the primary diagnosis's metastatic_sites, NOT as separate diagnoses
+
+## Validation Checks (per diagnosis)
 
 1. **Diagnosis Type**: Is the classification (solid_tumor/hematologic/neuroendocrine) correct?
 2. **Histology**: Does it follow WHO terminology? Lowercase? Full terms not abbreviations?
@@ -634,6 +688,8 @@ VALIDATION_SYSTEM_PROMPT = """You are a meticulous validator checking extracted 
 - Inaccurate dates or status
 - Missing or insufficient supporting evidence
 - Confidence score doesn't match data quality
+- Metastases incorrectly represented as separate primary diagnoses
+- Multiple primaries in the document but only one captured
 
 Provide specific, actionable feedback on what needs to be corrected."""
 
@@ -794,13 +850,18 @@ async def extract_to_pydantic(markdown: str, model) -> DiagnosisExtraction:
     extraction_agent = Agent(
         model=model,
         output_type=DiagnosisExtraction,
-        system_prompt="You are a precise data parser. Convert the provided markdown representation of diagnosis data into the structured DiagnosisExtraction model. Preserve all information accurately.",
+        system_prompt="You are a precise data parser. Convert the provided markdown representation of diagnosis data into the structured DiagnosisExtraction model. Preserve all information accurately. If the markdown says 'No cancer diagnosis information found', return an empty diagnoses list.",
     )
 
     prompt = f"""
     Convert the following markdown representation of diagnosis data into the DiagnosisExtraction model:
     
     {markdown}
+    
+    Remember:
+    - If markdown shows "No cancer diagnosis information found", set diagnoses to empty list []
+    - Each "## Diagnosis N" section becomes one BaseDiagnosis object in the diagnoses list
+    - Preserve all information accurately
     """
 
     print("\n🔄 Converting markdown to Pydantic model...")
@@ -1058,18 +1119,22 @@ async def test_extract_diagnosis():
     assert result.success is True
     assert result.extraction is not None
 
-    diagnosis = result.extraction.diagnosis
+    # Verify we have exactly one diagnosis for this sample
+    diagnoses = result.extraction.diagnoses
+    assert len(diagnoses) == 1
+
+    diagnosis = diagnoses[0]
 
     # Check diagnosis fields
-    assert diagnosis.type == DiagnosisTypeEnum.SOLID_TUMOR
+    assert diagnosis.type == DiagnosisType.SOLID_TUMOR
     assert "adenocarcinoma" in diagnosis.histology.lower()
     assert diagnosis.diagnosis_date == date(2024, 8, 26)
-    assert diagnosis.status == DiagnosisStatusEnum.ACTIVE
+    assert diagnosis.status == DiagnosisStatus.ACTIVE
 
     # Check solid tumor specific data
     assert isinstance(diagnosis.disease_data, SolidTumor)
     solid_tumor = diagnosis.disease_data
-    assert solid_tumor.primary_site == AnatomicalSiteEnum.LUNG
+    assert solid_tumor.primary_site == AnatomicalSite.LUNG
 
     # Check largest lesion (should be in mm)
     assert solid_tumor.largest_lesion is not None
@@ -1089,5 +1154,5 @@ async def test_extract_diagnosis():
     print("\n" + "=" * 80)
     print("TEST PASSED!")
     print("=" * 80)
-    print(f"\nExtracted diagnosis:")
+    print(f"\nExtracted diagnoses:")
     print(result.extraction.model_dump_json(indent=2))
