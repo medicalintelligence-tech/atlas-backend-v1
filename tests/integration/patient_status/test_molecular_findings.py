@@ -39,6 +39,12 @@ import pytest
 import json
 
 
+from pydantic import BaseModel, Field, field_validator, ConfigDict
+from typing import List, Optional, Union, Literal
+from enum import Enum
+from datetime import date
+
+
 # ============================================================================
 # ENUMS - Only for truly limited options
 # ============================================================================
@@ -57,8 +63,29 @@ class FindingType(str, Enum):
 
     VARIANT = "variant"
     CNA = "cna"
+    FUSION = "fusion"
     EXPRESSION = "expression"
     SIGNATURE = "signature"
+    WILDTYPE = "wildtype"
+
+
+class CNADirection(str, Enum):
+    """Direction of copy number alteration"""
+
+    AMPLIFICATION = "amplification"
+    DELETION = "deletion"
+    GAIN = "gain"
+    LOSS = "loss"
+    LOSS_OF_HETEROZYGOSITY = "loss_of_heterozygosity"
+
+
+class FusionType(str, Enum):
+    """Type of gene fusion"""
+
+    IN_FRAME = "in_frame"
+    OUT_OF_FRAME = "out_of_frame"
+    REARRANGEMENT = "rearrangement"  # When frame unknown
+    UNKNOWN = "unknown"
 
 
 # ============================================================================
@@ -72,13 +99,15 @@ class MolecularFindingBase(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     finding_type: FindingType = Field(description="Type of finding (discriminator)")
-    origin: Origin = Field(description="Somatic vs germline vs unknown")
+    origin: Origin = Field(
+        default=Origin.UNKNOWN, description="Somatic vs germline vs unknown"
+    )
     raw_text: str = Field(
         description="Raw text from report showing this finding", min_length=1
     )
     notes: Optional[str] = Field(
         None,
-        description="Additional context (e.g., 'Region-level CNA', 'Gene-specific CNA')",
+        description="Additional context or caveats",
     )
 
 
@@ -88,16 +117,16 @@ class MolecularFindingBase(BaseModel):
 
 
 class VariantFinding(MolecularFindingBase):
-    """Genetic mutation/variant (SNV, indel, etc.)"""
+    """Genetic mutation/variant (SNV, indel, splice variant)"""
 
     finding_type: Literal[FindingType.VARIANT] = FindingType.VARIANT
 
     gene: str = Field(
-        description="Gene name using HUGO nomenclature (e.g., 'KRAS', 'EGFR')",
+        description="Gene name using HUGO nomenclature (e.g., 'KRAS', 'EGFR', 'TP53')",
         min_length=1,
     )
     canonical_variant: str = Field(
-        description="Standardized variant notation (e.g., 'G12D', 'L858R', 'exon 19 deletion')",
+        description="Standardized variant notation (e.g., 'G12D', 'L858R', 'exon 19 deletion', 'exon 14 skipping')",
         min_length=1,
     )
     protein_change: Optional[str] = Field(
@@ -106,10 +135,15 @@ class VariantFinding(MolecularFindingBase):
     cdna_change: Optional[str] = Field(
         None, description="cDNA change notation if available (e.g., 'c.35G>A')"
     )
+    exon: Optional[str] = Field(
+        None, description="Exon number or region if specified (e.g., '19', '14')"
+    )
     variant_frequency: Optional[float] = Field(
         None, description="Variant allele frequency (0-1) if available", ge=0.0, le=1.0
     )
-    notes: Optional[str] = Field(None, description="Additional details")
+    is_hotspot: Optional[bool] = Field(
+        None, description="Whether this is a known hotspot mutation"
+    )
 
 
 class CNAFinding(MolecularFindingBase):
@@ -118,36 +152,86 @@ class CNAFinding(MolecularFindingBase):
     finding_type: Literal[FindingType.CNA] = FindingType.CNA
 
     gene: str = Field(
-        description="Gene name using HUGO nomenclature (e.g., 'MTAP', 'MET')",
+        description="Gene name using HUGO nomenclature (e.g., 'ERBB2', 'MET', 'CDKN2A')",
         min_length=1,
     )
-    alteration_direction: str = Field(
-        description="Direction of alteration: 'amplification', 'deletion', 'gain', 'loss', 'loss_of_heterozygosity'",
+    alteration_direction: CNADirection = Field(
+        description="Direction of copy number change"
+    )
+    copy_number: Optional[float] = Field(
+        None, description="Absolute copy number if quantified (e.g., 8.2)"
+    )
+    fold_change: Optional[float] = Field(
+        None, description="Fold change or ratio if reported (e.g., 3.5x)"
+    )
+    is_focal: Optional[bool] = Field(
+        None,
+        description="Whether this is focal (gene-level) vs broad (chromosomal region)",
+    )
+
+
+class FusionFinding(MolecularFindingBase):
+    """Gene fusion or structural rearrangement"""
+
+    finding_type: Literal[FindingType.FUSION] = FindingType.FUSION
+
+    gene_5prime: str = Field(
+        description="5' fusion partner gene (e.g., 'EML4' in EML4-ALK)",
         min_length=1,
     )
-    copy_number: Optional[float] = Field(None, description="Copy number if quantified")
-    notes: Optional[str] = Field(None, description="Additional details")
+    gene_3prime: str = Field(
+        description="3' fusion partner gene (e.g., 'ALK' in EML4-ALK)",
+        min_length=1,
+    )
+    fusion_type: FusionType = Field(
+        default=FusionType.UNKNOWN, description="Whether fusion is in-frame"
+    )
+    exon_5prime: Optional[str] = Field(
+        None, description="Exon from 5' partner if specified (e.g., 'exon 6')"
+    )
+    exon_3prime: Optional[str] = Field(
+        None, description="Exon from 3' partner if specified (e.g., 'exon 20')"
+    )
+    variant_frequency: Optional[float] = Field(
+        None,
+        description="Variant allele frequency or fusion read percentage if available",
+        ge=0.0,
+        le=1.0,
+    )
 
 
 class ExpressionFinding(MolecularFindingBase):
-    """Biomarker expression level"""
+    """Biomarker expression level (IHC, FISH, etc.)"""
 
     finding_type: Literal[FindingType.EXPRESSION] = FindingType.EXPRESSION
 
     biomarker: str = Field(
-        description="Biomarker name (e.g., 'HER2', 'PD-L1', 'ER', 'PR')", min_length=1
-    )
-    intensity_score: str = Field(
-        description="Expression level (e.g., '3+', '2+', '50%', 'positive', 'negative')",
+        description="Biomarker name (e.g., 'HER2', 'PD-L1', 'ER', 'PR', 'AR')",
         min_length=1,
     )
-    score_scale: Optional[str] = Field(
-        None, description="Scale used (e.g., 'IHC 0-3+', 'TPS', 'CPS')"
+    result: str = Field(
+        description="Expression result as reported (e.g., '3+', '2+', 'positive', 'negative', '90%', 'intact', 'lost')",
+        min_length=1,
+    )
+    methodology: Optional[str] = Field(
+        None,
+        description="Test methodology (e.g., 'IHC', 'FISH', 'ISH', 'RT-PCR')",
+    )
+    assay: Optional[str] = Field(
+        None,
+        description="Specific assay used (e.g., '22C3', 'SP263', 'Ventana', 'HercepTest')",
+    )
+    score_type: Optional[str] = Field(
+        None,
+        description="Scoring system used (e.g., 'TPS', 'CPS', 'IC', 'H-score', 'Allred')",
     )
     quantitative_value: Optional[float] = Field(
-        None, description="Numeric value if applicable (e.g., 50 for 50% TPS)"
+        None,
+        description="Numeric value if applicable (e.g., 50 for 50% TPS, 3 for 3+)",
     )
-    notes: Optional[str] = Field(None, description="Additional details")
+    quantitative_unit: Optional[str] = Field(
+        None, description="Unit for quantitative value (e.g., '%', 'ratio')"
+    )
 
 
 class SignatureFinding(MolecularFindingBase):
@@ -156,25 +240,47 @@ class SignatureFinding(MolecularFindingBase):
     finding_type: Literal[FindingType.SIGNATURE] = FindingType.SIGNATURE
 
     signature_type: str = Field(
-        description="Type of signature (e.g., 'MSI', 'TMB', 'dMMR', 'HRD', 'COSMIC-SBS1')",
+        description="Type of signature (e.g., 'MSI', 'TMB', 'dMMR', 'MMR', 'HRD', 'tumor_mutational_burden')",
         min_length=1,
     )
-    status: str = Field(
-        description="Status or interpretation (e.g., 'MSI-High', 'stable', 'deficient')",
+    result: str = Field(
+        description="Result as reported (e.g., 'MSI-High', 'MSS', 'stable', 'deficient', 'proficient')",
         min_length=1,
     )
     quantitative_value: Optional[float] = Field(
         None, description="Numeric value if applicable (e.g., 18.9 for TMB)"
     )
     unit: Optional[str] = Field(
-        None, description="Unit of measurement (e.g., 'mutations/Mb')"
+        None, description="Unit of measurement (e.g., 'mutations/Mb', 'muts/Mb')"
     )
-    notes: Optional[str] = Field(None, description="Additional details")
 
 
-# Union type for discriminated parsing
+class WildtypeFinding(MolecularFindingBase):
+    """Wildtype/not detected status - when absence of alteration is clinically relevant"""
+
+    finding_type: Literal[FindingType.WILDTYPE] = FindingType.WILDTYPE
+
+    gene: str = Field(
+        description="Gene confirmed as wildtype (e.g., 'KRAS', 'BRAF', 'EGFR')",
+        min_length=1,
+    )
+    alteration_type_tested: Optional[str] = Field(
+        None,
+        description="What was tested for (e.g., 'mutations', 'amplification', 'any alteration')",
+    )
+
+
+# ============================================================================
+# UNION TYPE
+# ============================================================================
+
 MolecularFinding = Union[
-    VariantFinding, CNAFinding, ExpressionFinding, SignatureFinding
+    VariantFinding,
+    CNAFinding,
+    FusionFinding,
+    ExpressionFinding,
+    SignatureFinding,
+    WildtypeFinding,
 ]
 
 
@@ -193,7 +299,7 @@ class TestReport(BaseModel):
     )
     test_name: Optional[str] = Field(
         None,
-        description="Name of test (e.g., 'Omniseq', 'FoundationOne', 'Guardant360')",
+        description="Name of test (e.g., 'Omniseq', 'FoundationOne CDx', 'Guardant360', 'Tempus xT')",
     )
     test_methods: List[str] = Field(
         description="Test methods used in this report (e.g., ['NGS', 'IHC', 'FISH', 'PCR'])",
@@ -205,6 +311,12 @@ class TestReport(BaseModel):
     specimen_site: Optional[str] = Field(
         None,
         description="Anatomical site/source of specimen (e.g., 'lung', 'liver metastasis', 'primary tumor', 'lymph node')",
+    )
+    tumor_content: Optional[float] = Field(
+        None,
+        description="Tumor content/cellularity as percentage (0-100) if reported",
+        ge=0.0,
+        le=100.0,
     )
     findings: List[MolecularFinding] = Field(
         description="All molecular findings from this report"
@@ -235,7 +347,6 @@ class MolecularFindingsExtraction(BaseModel):
     reports: List[TestReport] = Field(
         description="All test reports extracted from the document (usually 1, but can be multiple if document references multiple historical tests)"
     )
-
     extraction_challenges: Optional[List[str]] = Field(
         None, description="Brief notes on any extraction difficulties"
     )
